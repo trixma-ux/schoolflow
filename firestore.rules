@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Fonctions d'aide (Helpers)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && getUserRole() == 'teacher';
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && getUserRole() == 'student';
+    }
+    
+    function isParent() {
+      return isAuthenticated() && getUserRole() == 'parent';
+    }
+
+    // Règles pour les utilisateurs
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // Seul l'admin peut créer/modifier, un utilisateur peut modifier son propre compte (sauf le rôle)
+      allow update: if (isAuthenticated() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    // Règles pour les classes
+    match /classes/{classId} {
+      // Tout le monde peut lire la liste des classes
+      allow read: if isAuthenticated();
+      // Seul l'admin gère les classes
+      allow write: if isAdmin();
+    }
+
+    // Règles pour les notes (Grades)
+    match /grades/{gradeId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isTeacher() || 
+        // L'étudiant ne peut lire que ses notes
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        // Le parent ne peut lire que les notes de son enfant (via get)
+        (isParent() && resource.data.studentId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentIds)
+      );
+      // Les admins et profs ajoutent des notes
+      allow write: if isAdmin() || isTeacher();
+    }
+
+    // Règles pour les devoirs (Assignments)
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isTeacher();
+    }
+
+    // Règles pour l'emploi du temps (Schedules)
+    match /schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

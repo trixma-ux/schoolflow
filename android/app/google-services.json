@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "795443441609",
+    "project_id": "schoolflow-42186",
+    "storage_bucket": "schoolflow-42186.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795443441609:android:d57cbe35ad48ed53e30218",
+        "android_client_info": {
+          "package_name": "com.example.school_flow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhFRN4l00OBj13nQaffJ-TwyHL9ZqO4oc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
