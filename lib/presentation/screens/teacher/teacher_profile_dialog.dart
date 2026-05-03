@@ -93,7 +93,7 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
             const SizedBox(height: 8),
             subjectsAsync.when(
               data: (subjects) => DropdownButtonFormField<String>(
-                initialValue: _selectedSubjectId,
+                value: _selectedSubjectId,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: subjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
                 onChanged: (val) => setState(() => _selectedSubjectId = val),

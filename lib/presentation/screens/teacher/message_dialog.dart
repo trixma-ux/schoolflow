@@ -85,7 +85,7 @@ class _MessageDialogState extends ConsumerState<MessageDialog> {
                   final targets = users.where((u) => u.role == UserRole.parent || u.role == UserRole.admin).toList();
                   
                   return DropdownButtonFormField<String>(
-                    initialValue: _selectedReceiverId,
+                    value: _selectedReceiverId,
                     decoration: const InputDecoration(labelText: 'Destinataire', border: OutlineInputBorder()),
                     items: targets.map((u) => DropdownMenuItem(
                       value: u.id,
@@ -98,7 +98,7 @@ class _MessageDialogState extends ConsumerState<MessageDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<NotificationType>(
-                initialValue: _selectedType,
+                value: _selectedType,
                 decoration: const InputDecoration(labelText: 'Type de message', border: OutlineInputBorder()),
                 items: const [
                   DropdownMenuItem(value: NotificationType.message, child: Text('Message simple')),

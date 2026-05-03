@@ -74,7 +74,7 @@ class _LinkStudentDialogState extends ConsumerState<LinkStudentDialog> {
           }
 
           return DropdownButtonFormField<String>(
-            initialValue: _selectedStudentId,
+            value: _selectedStudentId,
             decoration: const InputDecoration(labelText: 'Sélectionner un élève', border: OutlineInputBorder()),
             items: students.map((s) => DropdownMenuItem(
               value: s.id,

@@ -95,7 +95,7 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<UserRole>(
-                initialValue: _selectedRole,
+                value: _selectedRole,
                 decoration: const InputDecoration(labelText: 'Rôle', border: OutlineInputBorder()),
                 items: UserRole.values.map((role) {
                   return DropdownMenuItem(
@@ -124,7 +124,7 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                       error: (e, s) => Text('Erreur classes: $e'),
                       data: (classes) {
                         return DropdownButtonFormField<String>(
-                          initialValue: _selectedClassId,
+                          value: _selectedClassId,
                           decoration: const InputDecoration(labelText: 'Classe assignée', border: OutlineInputBorder()),
                           items: classes.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                           onChanged: (val) {
