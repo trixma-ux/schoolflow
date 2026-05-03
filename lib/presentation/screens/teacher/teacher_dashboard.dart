@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import 'message_dialog.dart';
+import 'teacher_profile_dialog.dart';
 
 class TeacherDashboard extends ConsumerWidget {
   const TeacherDashboard({super.key});
@@ -50,6 +52,32 @@ class TeacherDashboard extends ConsumerWidget {
             icon: Icons.book,
             color: AppColors.accent,
             onTap: () {},
+          ),
+          const SizedBox(height: 16),
+          _buildActionCard(
+            context,
+            title: 'Messagerie',
+            icon: Icons.message,
+            color: AppColors.info,
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => const MessageDialog(),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildActionCard(
+            context,
+            title: 'Mon Profil (Matière & Classes)',
+            icon: Icons.person,
+            color: AppColors.secondary,
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => const TeacherProfileDialog(),
+              );
+            },
           ),
         ],
       ),

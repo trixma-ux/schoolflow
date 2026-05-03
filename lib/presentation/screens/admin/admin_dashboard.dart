@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_provider.dart';
+import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_colors.dart';
+import 'add_user_dialog.dart';
+import 'link_student_dialog.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -25,7 +28,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
     final pages = [
       _SystemOverviewTab(),
-      const Center(child: Text('Gestion Utilisateurs')),
+      _UserManagementTab(),
       const Center(child: Text('Gestion Classes')),
     ];
 
@@ -41,7 +44,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       ),
       body: pages[_currentIndex],
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => const AddUserDialog(),
+          );
+        },
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -95,7 +103,12 @@ class _SystemOverviewTab extends ConsumerWidget {
           title: const Text('Ajouter un utilisateur'),
           tileColor: AppColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onTap: () {},
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => const AddUserDialog(),
+            );
+          },
         ),
         const SizedBox(height: 8),
         ListTile(
@@ -126,6 +139,54 @@ class _SystemOverviewTab extends ConsumerWidget {
           Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         ],
       ),
+    );
+  }
+}
+
+class _UserManagementTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersAsync = ref.watch(allUsersProvider);
+
+    return usersAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Center(child: Text('Erreur: $e')),
+      data: (users) {
+        if (users.isEmpty) return const Center(child: Text('Aucun utilisateur trouvé.'));
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: users.length,
+          itemBuilder: (context, index) {
+            final user = users[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                  child: Text(user.name.isNotEmpty ? user.name.substring(0, 1).toUpperCase() : 'U', style: const TextStyle(color: AppColors.primary)),
+                ),
+                title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${user.email} - ${user.role.name}'),
+                trailing: user.role == UserRole.parent ? IconButton(
+                  icon: const Icon(Icons.link, color: AppColors.textSecondary),
+                  tooltip: 'Lier un élève',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => LinkStudentDialog(
+                        parentId: user.id,
+                        parentName: user.name,
+                      ),
+                    );
+                  },
+                ) : const SizedBox.shrink(),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

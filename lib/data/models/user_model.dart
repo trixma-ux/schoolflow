@@ -16,6 +16,10 @@ class UserModel extends Equatable {
   // Specific to Students
   final String? classId;
   final String? parentId;
+  
+  // Specific to Teachers
+  final List<String>? classIds;
+  final String? subjectId;
 
   const UserModel({
     required this.id,
@@ -27,6 +31,8 @@ class UserModel extends Equatable {
     this.studentIds,
     this.classId,
     this.parentId,
+    this.classIds,
+    this.subjectId,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -45,6 +51,8 @@ class UserModel extends Equatable {
       studentIds: map['studentIds'] != null ? List<String>.from(map['studentIds']) : null,
       classId: map['classId'],
       parentId: map['parentId'],
+      classIds: map['classIds'] != null ? List<String>.from(map['classIds']) : null,
+      subjectId: map['subjectId'],
     );
   }
 
@@ -58,9 +66,11 @@ class UserModel extends Equatable {
       if (studentIds != null) 'studentIds': studentIds,
       if (classId != null) 'classId': classId,
       if (parentId != null) 'parentId': parentId,
+      if (classIds != null) 'classIds': classIds,
+      if (subjectId != null) 'subjectId': subjectId,
     };
   }
 
   @override
-  List<Object?> get props => [id, name, email, role, profilePic, createdAt, studentIds, classId, parentId];
+  List<Object?> get props => [id, name, email, role, profilePic, createdAt, studentIds, classId, parentId, classIds, subjectId];
 }

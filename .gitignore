@@ -33,6 +33,13 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# JDK and other binaries
+lib/data/repositories/oracleJdk-26/
+*.exe
+*.dll
+*.so
+*.dylib
+
 # Symbolication related
 app.*.symbols
 

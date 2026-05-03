@@ -75,7 +75,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserModel?> register(String name, String email, String password, UserRole role) async {
+  Future<UserModel?> register(String name, String email, String password, UserRole role, [String? classId]) async {
     try {
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email, 
@@ -91,7 +91,7 @@ class AuthRepositoryImpl implements AuthRepository {
         role: role,
         profilePic: '',
         createdAt: DateTime.now(),
-        classId: role == UserRole.student || role == UserRole.teacher ? 'c1' : null,
+        classId: classId,
       );
       
       try {

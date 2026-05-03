@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
+import '../../../data/models/notification_model.dart';
 
 class StudentDashboard extends ConsumerStatefulWidget {
   const StudentDashboard({super.key});
@@ -40,9 +41,13 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.notifications_none),
+              onPressed: () {
+                Scaffold.of(context).openEndDrawer();
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -53,6 +58,7 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
           )
         ],
       ),
+      endDrawer: _NotificationsDrawer(userId: user.id),
       body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
@@ -272,6 +278,60 @@ class _ScheduleTab extends ConsumerWidget {
           error: (err, stack) => Text('Erreur: $err'),
         ),
       ],
+    );
+  }
+}
+
+class _NotificationsDrawer extends ConsumerWidget {
+  final String userId;
+  
+  const _NotificationsDrawer({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifsAsync = ref.watch(notificationsProvider(userId));
+
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: AppColors.primary),
+            child: const Row(
+              children: [
+                Icon(Icons.notifications, color: Colors.white, size: 32),
+                SizedBox(width: 16),
+                Text('Notifications', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: notifsAsync.when(
+              data: (notifs) {
+                if (notifs.isEmpty) {
+                  return const Center(child: Text('Aucune notification.'));
+                }
+                return ListView.builder(
+                  itemCount: notifs.length,
+                  itemBuilder: (context, index) {
+                    final notif = notifs[index];
+                    return ListTile(
+                      leading: Icon(
+                        notif.type == NotificationType.grade ? Icons.grade : Icons.message,
+                        color: notif.isRead ? Colors.grey : AppColors.primary,
+                      ),
+                      title: Text(notif.title, style: TextStyle(fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold)),
+                      subtitle: Text(notif.message),
+                      trailing: Text(DateFormat('dd/MM HH:mm').format(notif.createdAt), style: const TextStyle(fontSize: 10)),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, s) => Center(child: Text('Erreur: $e')),
+            ),
+          )
+        ],
+      ),
     );
   }
 }

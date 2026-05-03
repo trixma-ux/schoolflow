@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/models/notification_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -36,16 +37,20 @@ class _ParentDashboardState extends ConsumerState<ParentDashboard> {
           ],
         ),
       ),
-      body: studentIds.isEmpty
-          ? const Center(child: Text('Aucun enfant associé à ce compte.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: studentIds.length,
-              itemBuilder: (context, index) {
-                final studentId = studentIds[index];
-                return _ChildOverviewCard(studentId: studentId);
-              },
-            ),
+      body: _currentIndex == 0
+          ? (studentIds.isEmpty
+              ? const Center(child: Text('Aucun enfant associé à ce compte.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: studentIds.length,
+                  itemBuilder: (context, index) {
+                    final studentId = studentIds[index];
+                    return _ChildOverviewCard(studentId: studentId);
+                  },
+                ))
+          : _currentIndex == 1
+              ? _MessagesTab(userId: user.id)
+              : const Center(child: Text('Paiements (Bientôt disponible)')),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
@@ -134,6 +139,56 @@ class _ChildOverviewCard extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
+    );
+  }
+}
+
+class _MessagesTab extends ConsumerWidget {
+  final String userId;
+
+  const _MessagesTab({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationsAsync = ref.watch(notificationsProvider(userId));
+
+    return notificationsAsync.when(
+      data: (notifications) {
+        if (notifications.isEmpty) {
+          return const Center(child: Text('Aucun message reçu.'));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: notifications.length,
+          itemBuilder: (context, index) {
+            final notif = notifications[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: notif.isRead ? AppColors.surface : AppColors.primaryLight.withValues(alpha: 0.1),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary,
+                  child: Icon(
+                    notif.type == NotificationType.absence ? Icons.warning_amber 
+                    : notif.type == NotificationType.grade ? Icons.grade
+                    : Icons.message,
+                    color: Colors.white,
+                  ),
+                ),
+                title: Text(notif.title, style: TextStyle(fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold)),
+                subtitle: Text(notif.message),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  // TODO: Marquer comme lu
+                },
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Center(child: Text('Erreur: $e')),
     );
   }
 }
