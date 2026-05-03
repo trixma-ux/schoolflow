@@ -20,7 +20,7 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(authStateProvider).value;
+      final user = ref.read(authStateProvider).valueOrNull;
       if (user != null) {
         setState(() {
           _selectedSubjectId = user.subjectId;
@@ -30,8 +30,8 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
     });
   }
 
-  void _save() async {
-    final user = ref.read(authStateProvider).value;
+  Future<void> _save() async {
+    final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) return;
 
     if (_selectedSubjectId == null) {
@@ -58,8 +58,10 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
           'classIds': _selectedClassIds,
         });
       }
-      
-      // Update local state by forcing a refresh or just returning
+
+      // Refresh the auth state so the dashboard immediately reflects the new classIds
+      await ref.read(authStateProvider.notifier).refreshUser();
+
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,43 +91,78 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ma Matière', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Ma Matière principale', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             subjectsAsync.when(
-              data: (subjects) => DropdownButtonFormField<String>(
-                value: _selectedSubjectId,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                items: subjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                onChanged: (val) => setState(() => _selectedSubjectId = val),
-              ),
-              loading: () => const CircularProgressIndicator(),
+              data: (subjects) {
+                if (subjects.isEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Aucune matière disponible. Demandez à l\'administrateur d\'initialiser les matières.',
+                      style: TextStyle(color: AppColors.warning),
+                    ),
+                  );
+                }
+                return DropdownButtonFormField<String>(
+                  value: _selectedSubjectId,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  hint: const Text('Choisir une matière'),
+                  items: subjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                  onChanged: (val) => setState(() => _selectedSubjectId = val),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, s) => Text('Erreur: $e'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text('Mes Classes', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('Sélectionnez toutes les classes que vous enseignez.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             classesAsync.when(
-              data: (classes) => Wrap(
-                spacing: 8.0,
-                children: classes.map((c) {
-                  final isSelected = _selectedClassIds.contains(c.id);
-                  return FilterChip(
-                    label: Text(c.name),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedClassIds.add(c.id);
-                        } else {
-                          _selectedClassIds.remove(c.id);
-                        }
-                      });
-                    },
-                    selectedColor: AppColors.primaryLight,
+              data: (classes) {
+                if (classes.isEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Aucune classe créée. Demandez à l\'administrateur de créer des classes.',
+                      style: TextStyle(color: AppColors.warning),
+                    ),
                   );
-                }).toList(),
-              ),
-              loading: () => const CircularProgressIndicator(),
+                }
+                return Wrap(
+                  spacing: 8.0,
+                  runSpacing: 4.0,
+                  children: classes.map((c) {
+                    final isSelected = _selectedClassIds.contains(c.id);
+                    return FilterChip(
+                      label: Text(c.name),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedClassIds.add(c.id);
+                          } else {
+                            _selectedClassIds.remove(c.id);
+                          }
+                        });
+                      },
+                      selectedColor: AppColors.primaryLight.withValues(alpha: 0.3),
+                      checkmarkColor: AppColors.primary,
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, s) => Text('Erreur: $e'),
             ),
           ],

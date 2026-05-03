@@ -28,6 +28,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  /// Re-fetches the current user from Firestore and updates the state.
+  /// Call this after any profile update (e.g. teacher saving classIds).
+  Future<void> refreshUser() async {
+    try {
+      final user = await _repository.getCurrentUser();
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   Future<bool> login(String email, String password) async {
     state = const AsyncValue.loading();
     try {
