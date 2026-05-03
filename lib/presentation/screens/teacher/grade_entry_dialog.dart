@@ -65,7 +65,7 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Note enregistrée avec succès !'), backgroundColor: AppColors.success),
+          const SnackBar(content: Text('Note enregistrée !'), backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
@@ -90,6 +90,20 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
     final allClasses = classesAsync.valueOrNull ?? [];
     final teacherClasses = allClasses.where((c) => teacherClassIds.contains(c.id)).toList();
     final allUsers = usersAsync.valueOrNull ?? [];
+    final allSubjects = subjectsAsync.valueOrNull ?? [];
+
+    final teacherSubjectIds = user?.effectiveSubjectIds ?? [];
+    final teacherSubjects = teacherSubjectIds.isNotEmpty
+        ? allSubjects.where((s) => teacherSubjectIds.contains(s.id)).toList()
+        : allSubjects;
+
+    if (teacherSubjects.length == 1 && _selectedSubjectId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedSubjectId == null) {
+          setState(() => _selectedSubjectId = teacherSubjects.first.id);
+        }
+      });
+    }
 
     ClassModel? selectedClass;
     try {
@@ -114,7 +128,7 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: const Text('Aucune classe assignée. Configurez votre profil enseignant.', style: TextStyle(color: AppColors.warning)),
+                  child: const Text('Aucune classe assignée. Configurez votre profil.', style: TextStyle(color: AppColors.warning)),
                 )
               else ...[
                 DropdownButtonFormField<String>(
@@ -137,16 +151,12 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
                   validator: (v) => v == null ? 'Requis' : null,
                 ),
                 const SizedBox(height: 16),
-                subjectsAsync.when(
-                  data: (subjects) => DropdownButtonFormField<String>(
-                    value: _selectedSubjectId,
-                    decoration: const InputDecoration(labelText: 'Matière', border: OutlineInputBorder()),
-                    items: subjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                    onChanged: (val) => setState(() => _selectedSubjectId = val),
-                    validator: (v) => v == null ? 'Requis' : null,
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, s) => Text('Erreur matières: $e'),
+                DropdownButtonFormField<String>(
+                  value: _selectedSubjectId,
+                  decoration: const InputDecoration(labelText: 'Matière', border: OutlineInputBorder()),
+                  items: teacherSubjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                  onChanged: (val) => setState(() => _selectedSubjectId = val),
+                  validator: (v) => v == null ? 'Requis' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<GradeType>(
@@ -169,8 +179,7 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Requis';
-                          final n = double.tryParse(v.replaceAll(',', '.'));
-                          if (n == null || n < 0) return 'Invalide';
+                          if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Invalide';
                           return null;
                         },
                       ),

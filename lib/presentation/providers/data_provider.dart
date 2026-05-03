@@ -8,6 +8,7 @@ import '../../data/models/class_model.dart';
 import '../../data/models/assignment_model.dart';
 import '../../data/models/grade_model.dart';
 import '../../data/models/schedule_model.dart';
+import '../../data/models/complaint_model.dart';
 
 final firebaseFirestoreProvider = Provider<FirebaseFirestore?>((ref) {
   try {
@@ -69,7 +70,6 @@ final classScheduleProvider = StreamProvider.family<List<ScheduleModel>, String>
       .map((s) => s.docs.map((doc) => ScheduleModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Sorted in Dart to avoid requiring a Firestore composite index
 final notificationsProvider = StreamProvider.family<List<NotificationModel>, String>((ref, userId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
   if (firestore == null || userId.isEmpty) return Stream.value([]);
@@ -84,7 +84,11 @@ final notificationsProvider = StreamProvider.family<List<NotificationModel>, Str
   });
 });
 
-// Teacher-specific grades stream (grades they entered)
+final unreadNotificationsCountProvider = Provider.family<int, String>((ref, userId) {
+  final notifs = ref.watch(notificationsProvider(userId)).valueOrNull ?? [];
+  return notifs.where((n) => !n.isRead).length;
+});
+
 final teacherGradesProvider = StreamProvider.family<List<GradeModel>, String>((ref, teacherId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
   if (firestore == null || teacherId.isEmpty) return Stream.value([]);
@@ -93,4 +97,28 @@ final teacherGradesProvider = StreamProvider.family<List<GradeModel>, String>((r
       .where('teacherId', isEqualTo: teacherId)
       .snapshots()
       .map((s) => s.docs.map((doc) => GradeModel.fromMap(doc.data(), doc.id)).toList());
+});
+
+final complaintsProvider = StreamProvider<List<ComplaintModel>>((ref) {
+  final firestore = ref.watch(firebaseFirestoreProvider);
+  if (firestore == null) return Stream.value([]);
+  return firestore.collection('complaints').snapshots().map((s) {
+    final list = s.docs.map((doc) => ComplaintModel.fromMap(doc.data(), doc.id)).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  });
+});
+
+final studentComplaintsProvider = StreamProvider.family<List<ComplaintModel>, String>((ref, studentId) {
+  final firestore = ref.watch(firebaseFirestoreProvider);
+  if (firestore == null || studentId.isEmpty) return Stream.value([]);
+  return firestore
+      .collection('complaints')
+      .where('studentId', isEqualTo: studentId)
+      .snapshots()
+      .map((s) {
+    final list = s.docs.map((doc) => ComplaintModel.fromMap(doc.data(), doc.id)).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  });
 });

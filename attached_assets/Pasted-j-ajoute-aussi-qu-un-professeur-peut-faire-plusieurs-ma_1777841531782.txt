@@ -1,0 +1,37 @@
+j'ajoute aussi qu'un professeur peut faire plusieurs matieres dans sa filieres et renseigne toi en ligne sur les matieres qu'on fait dans les filieres en Cote divoire  mais sera toujours limités aux 5 classes il faut que en tant que professeur je puisse choisir mes matieres en fonction de la filieres que j'ai décidé d'enseigner dans et que ce soit soit parent etudiant et eleve il me faut une page utilisateur juste à cote de celui de notification et des parametres personnalisés a chaque utilisateur aussi un mode sombre dans l'application pour finir en tant que administration je dois pouvoir voir les etudiants qui vienne de creer leur compte leur assigner une classe ou fais le automatiquement concernant les professeurs permet moi de connaitre mes éleves et l'emploie du temps de chaque classe par exemple je suis admin je dis la classe A informatique va contenir automatiquement les éleves inscrits avec cette filieres ensuite moi le prof je vois la premiere classe ou les classes avec mes éleves moi  l'etudiant je sais dans quelle classe je suis et quel professeur me prends dans quel matiere aussi va falloir ajouter une table pour les matieres pour les proffesseurs pour quils puissent choisir la matieres quils vont enseigner et en fonction automatiquement ils auront les éleves faisant la meme filiere et leur matieres pour quils y aient une coordination et je veux dans les settings des utilisateurs un bouton decoonnection et l'administration doit avoir un dashbord interaactives de tous les éleves qui se gerent aautomatiquement tout ce quils auront a faire c'est de recevoir les plaintes les demandes de réévaluations et veront les professeurs qui ont été assignes a quel classe et dans la classe quel éleves les professeurs ont tu implementes toutes les fonctions et tu redeploie 
+Wow, c'est une liste de fonctionnalités incroyablement riche ! C'est ce qui fera de ton application un système complet et totalement automatisé.
+
+Pour résumer ce que tu viens de demander :
+
+Les professeurs choisissent leur filière puis leur matière. Ils sont ensuite automatiquement assignés aux classes/amphis de cette filière.
+L'étudiant et le professeur peuvent voir exactement qui est dans leur classe et qui enseigne quoi.
+Menu Global et Paramètres : Tout le monde aura une barre en haut avec les Notifications, un Profil/Paramètres contenant un bouton de Déconnexion et un interrupteur Mode Sombre.
+Tableau de bord Admin Interactif : L'administration ne fait plus d'assignations manuelles fatiguantes. Elle supervise tout de manière interactive (classes, profs) et dispose d'une rubrique pour gérer les plaintes / demandes de réévaluation des étudiants.
+Comme c'est encore une grosse évolution structurelle, j'ai mis à jour notre plan d'implémentation.
+
+👉 
+Consulte la mise à jour de l'implementation_plan.md ici
+
+J'ai juste 3 petites questions (encadrées en rouge dans le plan) concernant les matières automatiques et le système de plainte. Dès que tu me donnes ton "OK" sur ces points, je lance immédiatement le développement et le déploiement de tout ça !
+
+10:31 PM
+1 oui 2 oui 3 oui je valides le plan 
+theme_provider.dart
+app_theme.dart
+main.dart
+custom_app_bar.dart
+settings_screen.dart
+admin_dashboard.dart
+student_dashboard.dart
+teacher_dashboard.dart
+parent_dashboard.dart
+subjects.dart
+login_screen.dart
+auth_repository.dart
+auth_provider.dart
+auth_repository_impl.dart
+class_repository.dart
+complaint_model.dart
+data_provider.dart
+10:41 PM
+j'ajoute aussi qu'un professeur peut faire plusieurs matieres dans sa filieres et renseigne toi en ligne sur les matieres qu'on fait dans les filieres en Cote divoire  mais sera toujours limités aux 5 classes 

@@ -2,15 +2,17 @@ import 'package:equatable/equatable.dart';
 
 class SubjectModel extends Equatable {
   final String id;
-  final String name; // e.g. "Mathématiques", "Physique"
+  final String name;
   final double coefficient;
   final String description;
+  final String filiere;
 
   const SubjectModel({
     required this.id,
     required this.name,
     required this.coefficient,
     required this.description,
+    required this.filiere,
   });
 
   factory SubjectModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -19,6 +21,7 @@ class SubjectModel extends Equatable {
       name: map['name'] ?? '',
       coefficient: (map['coefficient'] ?? 1.0).toDouble(),
       description: map['description'] ?? '',
+      filiere: map['filiere'] ?? '',
     );
   }
 
@@ -27,9 +30,10 @@ class SubjectModel extends Equatable {
       'name': name,
       'coefficient': coefficient,
       'description': description,
+      'filiere': filiere,
     };
   }
 
   @override
-  List<Object?> get props => [id, name, coefficient, description];
+  List<Object?> get props => [id, name, coefficient, description, filiere];
 }

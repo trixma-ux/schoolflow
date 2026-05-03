@@ -9,17 +9,14 @@ class UserModel extends Equatable {
   final UserRole role;
   final String profilePic;
   final DateTime createdAt;
-  
-  // Specific to Parents
+
   final List<String>? studentIds;
-  
-  // Specific to Students
   final String? classId;
   final String? parentId;
-  
-  // Specific to Teachers
   final List<String>? classIds;
   final String? subjectId;
+  final List<String>? subjectIds;
+  final String? filiere;
 
   const UserModel({
     required this.id,
@@ -33,7 +30,15 @@ class UserModel extends Equatable {
     this.parentId,
     this.classIds,
     this.subjectId,
+    this.subjectIds,
+    this.filiere,
   });
+
+  List<String> get effectiveSubjectIds {
+    if (subjectIds != null && subjectIds!.isNotEmpty) return subjectIds!;
+    if (subjectId != null && subjectId!.isNotEmpty) return [subjectId!];
+    return [];
+  }
 
   factory UserModel.fromMap(Map<String, dynamic> map, String documentId) {
     return UserModel(
@@ -45,14 +50,16 @@ class UserModel extends Equatable {
         orElse: () => UserRole.student,
       ),
       profilePic: map['profilePic'] ?? '',
-      createdAt: map['createdAt'] != null 
-          ? DateTime.parse(map['createdAt']) 
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
           : DateTime.now(),
       studentIds: map['studentIds'] != null ? List<String>.from(map['studentIds']) : null,
       classId: map['classId'],
       parentId: map['parentId'],
       classIds: map['classIds'] != null ? List<String>.from(map['classIds']) : null,
       subjectId: map['subjectId'],
+      subjectIds: map['subjectIds'] != null ? List<String>.from(map['subjectIds']) : null,
+      filiere: map['filiere'],
     );
   }
 
@@ -68,9 +75,11 @@ class UserModel extends Equatable {
       if (parentId != null) 'parentId': parentId,
       if (classIds != null) 'classIds': classIds,
       if (subjectId != null) 'subjectId': subjectId,
+      if (subjectIds != null) 'subjectIds': subjectIds,
+      if (filiere != null) 'filiere': filiere,
     };
   }
 
   @override
-  List<Object?> get props => [id, name, email, role, profilePic, createdAt, studentIds, classId, parentId, classIds, subjectId];
+  List<Object?> get props => [id, name, email, role, profilePic, createdAt, studentIds, classId, parentId, classIds, subjectId, subjectIds, filiere];
 }
