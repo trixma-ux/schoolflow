@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../../data/models/subject_model.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/models/user_model.dart';
@@ -8,11 +9,13 @@ import '../../data/models/assignment_model.dart';
 import '../../data/models/grade_model.dart';
 import '../../data/models/schedule_model.dart';
 
-final isFirebaseReadyProvider = StateProvider<bool>((ref) => false);
-
 final firebaseFirestoreProvider = Provider<FirebaseFirestore?>((ref) {
-  final isReady = ref.watch(isFirebaseReadyProvider);
-  return isReady ? FirebaseFirestore.instance : null;
+  try {
+    if (Firebase.apps.isEmpty) return null;
+    return FirebaseFirestore.instance;
+  } catch (e) {
+    return null;
+  }
 });
 
 // Provides the list of all classes

@@ -52,8 +52,15 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
-              backgroundImage: NetworkImage(user.profilePic),
+              backgroundImage: user.profilePic.isNotEmpty ? NetworkImage(user.profilePic) : null,
+              backgroundColor: AppColors.primaryLight,
               radius: 18,
+              child: user.profilePic.isEmpty
+                  ? Text(
+                      user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    )
+                  : null,
             ),
           )
         ],
