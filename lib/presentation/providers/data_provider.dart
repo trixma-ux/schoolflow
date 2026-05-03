@@ -18,82 +18,79 @@ final firebaseFirestoreProvider = Provider<FirebaseFirestore?>((ref) {
   }
 });
 
-// Provides the list of all classes
 final classesProvider = StreamProvider<List<ClassModel>>((ref) {
   final firestore = ref.watch(firebaseFirestoreProvider);
   if (firestore == null) return Stream.value([]);
-  return firestore.collection('classes').snapshots().map((snapshot) {
-    return snapshot.docs.map((doc) => ClassModel.fromMap(doc.data(), doc.id)).toList();
-  });
+  return firestore.collection('classes').snapshots().map((s) =>
+      s.docs.map((doc) => ClassModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides the list of all subjects
 final subjectsProvider = StreamProvider<List<SubjectModel>>((ref) {
   final firestore = ref.watch(firebaseFirestoreProvider);
   if (firestore == null) return Stream.value([]);
-  return firestore.collection('subjects').snapshots().map((snapshot) {
-    return snapshot.docs.map((doc) => SubjectModel.fromMap(doc.data(), doc.id)).toList();
-  });
+  return firestore.collection('subjects').snapshots().map((s) =>
+      s.docs.map((doc) => SubjectModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides the list of all users (for admin)
 final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
   final firestore = ref.watch(firebaseFirestoreProvider);
   if (firestore == null) return Stream.value([]);
-  return firestore.collection('users').snapshots().map((snapshot) {
-    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList();
-  });
+  return firestore.collection('users').snapshots().map((s) =>
+      s.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides the student's assignments
 final studentAssignmentsProvider = StreamProvider.family<List<AssignmentModel>, String>((ref, classId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
-  if (firestore == null) return Stream.value([]);
+  if (firestore == null || classId.isEmpty) return Stream.value([]);
   return firestore
       .collection('assignments')
       .where('classId', isEqualTo: classId)
       .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) => AssignmentModel.fromMap(doc.data(), doc.id)).toList();
-  });
+      .map((s) => s.docs.map((doc) => AssignmentModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides the student's grades
 final studentGradesProvider = StreamProvider.family<List<GradeModel>, String>((ref, studentId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
-  if (firestore == null) return Stream.value([]);
+  if (firestore == null || studentId.isEmpty) return Stream.value([]);
   return firestore
       .collection('grades')
       .where('studentId', isEqualTo: studentId)
       .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) => GradeModel.fromMap(doc.data(), doc.id)).toList();
-  });
+      .map((s) => s.docs.map((doc) => GradeModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides schedule for a given class
 final classScheduleProvider = StreamProvider.family<List<ScheduleModel>, String>((ref, classId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
-  if (firestore == null) return Stream.value([]);
+  if (firestore == null || classId.isEmpty) return Stream.value([]);
   return firestore
       .collection('schedules')
       .where('classId', isEqualTo: classId)
       .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) => ScheduleModel.fromMap(doc.data(), doc.id)).toList();
-  });
+      .map((s) => s.docs.map((doc) => ScheduleModel.fromMap(doc.data(), doc.id)).toList());
 });
 
-// Provides notifications for a given user
+// Sorted in Dart to avoid requiring a Firestore composite index
 final notificationsProvider = StreamProvider.family<List<NotificationModel>, String>((ref, userId) {
   final firestore = ref.watch(firebaseFirestoreProvider);
-  if (firestore == null) return Stream.value([]);
+  if (firestore == null || userId.isEmpty) return Stream.value([]);
   return firestore
       .collection('notifications')
       .where('receiverId', isEqualTo: userId)
-      .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)).toList();
+      .map((s) {
+    final list = s.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   });
+});
+
+// Teacher-specific grades stream (grades they entered)
+final teacherGradesProvider = StreamProvider.family<List<GradeModel>, String>((ref, teacherId) {
+  final firestore = ref.watch(firebaseFirestoreProvider);
+  if (firestore == null || teacherId.isEmpty) return Stream.value([]);
+  return firestore
+      .collection('grades')
+      .where('teacherId', isEqualTo: teacherId)
+      .snapshots()
+      .map((s) => s.docs.map((doc) => GradeModel.fromMap(doc.data(), doc.id)).toList());
 });

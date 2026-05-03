@@ -19,9 +19,10 @@ class CommunicationRepository {
       final snapshot = await _firestore
           .collection(_collection)
           .where('receiverId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
           .get();
-      return snapshot.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)).toList();
+      final list = snapshot.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
     } catch (e) {
       return [];
     }
