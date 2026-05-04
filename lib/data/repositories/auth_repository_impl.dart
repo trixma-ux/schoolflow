@@ -42,15 +42,53 @@ class AuthRepositoryImpl implements AuthRepository {
       throw Exception('Firebase non configuré.');
     }
 
-    final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    // Check if there is already a signed-in user (admin creating another user).
+    // In that case we use a secondary Firebase app so the current session is
+    // NOT interrupted.
+    final currentUser = _firebaseAuth.currentUser;
+    final bool isAdminCreating = currentUser != null;
 
-    if (userCredential.user == null) return null;
+    String uid;
+
+    if (isAdminCreating) {
+      // ── Secondary-app pattern ──────────────────────────────────────────────
+      // Spin up a temporary Firebase app so createUserWithEmailAndPassword
+      // does NOT touch the primary auth state.
+      final String secondaryAppName = 'secondary_${DateTime.now().millisecondsSinceEpoch}';
+      FirebaseApp? secondaryApp;
+      try {
+        secondaryApp = await Firebase.initializeApp(
+          name: secondaryAppName,
+          options: Firebase.app().options,
+        );
+
+        final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+        final credential = await secondaryAuth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        uid = credential.user!.uid;
+
+        // Sign out from secondary app immediately — we don't need it.
+        await secondaryAuth.signOut();
+      } finally {
+        // Always delete the secondary app to free resources.
+        try {
+          await secondaryApp?.delete();
+        } catch (_) {}
+      }
+    } else {
+      // Normal self-registration (no one is logged in).
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (credential.user == null) return null;
+      uid = credential.user!.uid;
+    }
 
     final newUser = UserModel(
-      id: userCredential.user!.uid,
+      id: uid,
       name: name,
       email: email,
       role: role,
@@ -59,18 +97,26 @@ class AuthRepositoryImpl implements AuthRepository {
       classId: classId,
     );
 
-    // Write to Firestore — rules now allow: create if auth.uid == userId
+    // Write to Firestore — primary auth is intact so Firestore rules pass.
     try {
       await _firestore.collection('users').doc(newUser.id).set(newUser.toMap());
     } catch (e) {
       debugPrint('Erreur écriture Firestore lors de l\'inscription: $e');
-      // Clean up the Auth user to keep state consistent
-      await userCredential.user!.delete();
+      // Only delete the Auth account on self-registration; for admin-created
+      // accounts the uid belongs to the secondary app which is already deleted.
+      if (!isAdminCreating) {
+        try {
+          await _firebaseAuth.currentUser?.delete();
+        } catch (_) {}
+      }
       throw Exception('Impossible de créer le profil Firestore : $e');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('currentUserDocId', newUser.id);
+    // Only update SharedPreferences when the user is registering themselves.
+    if (!isAdminCreating) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('currentUserDocId', newUser.id);
+    }
 
     return newUser;
   }

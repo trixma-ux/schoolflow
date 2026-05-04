@@ -23,6 +23,8 @@ class AdminDashboard extends ConsumerStatefulWidget {
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _currentIndex = 0;
 
+  void _goToTab(int index) => setState(() => _currentIndex = index);
+
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(authStateProvider);
@@ -35,7 +37,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final unread = ref.watch(unreadNotificationsCountProvider(user.id));
 
     final pages = [
-      _SystemOverviewTab(adminId: user.id),
+      _SystemOverviewTab(adminId: user.id, onNavigateToTab: _goToTab),
       const _UserManagementTab(),
       const ClassManagementTab(),
       const _ComplaintsTab(),
@@ -112,7 +114,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
 class _SystemOverviewTab extends ConsumerStatefulWidget {
   final String adminId;
-  const _SystemOverviewTab({required this.adminId});
+  final void Function(int) onNavigateToTab;
+  const _SystemOverviewTab({required this.adminId, required this.onNavigateToTab});
 
   @override
   ConsumerState<_SystemOverviewTab> createState() => _SystemOverviewTabState();
@@ -238,7 +241,7 @@ class _SystemOverviewTabState extends ConsumerState<_SystemOverviewTab> {
         _actionTile(Icons.person_add, AppColors.primary, 'Ajouter un utilisateur',
           () => showDialog(context: context, builder: (_) => const AddUserDialog())),
         const SizedBox(height: 8),
-        _actionTile(Icons.class_, AppColors.warning, 'Gérer les classes', () {}),
+        _actionTile(Icons.class_, AppColors.warning, 'Gérer les classes', () => widget.onNavigateToTab(2)),
       ],
     );
   }

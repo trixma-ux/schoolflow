@@ -32,14 +32,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated();
       allow update: if (isAuthenticated() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
       allow delete: if isAdmin();
     }
 
     match /classes/{classId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isTeacher();
     }
 
     match /subjects/{subjectId} {
@@ -89,6 +89,18 @@ service cloud.firestore {
     match /absences/{absenceId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin() || isTeacher();
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        isTeacher() ||
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        (isParent() && resource.data.studentId in getUserData().studentIds)
+      );
+      allow create: if isAuthenticated() && (isStudent() || isTeacher());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

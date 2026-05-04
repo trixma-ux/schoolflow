@@ -36,7 +36,6 @@ class _AssignmentDialogState extends ConsumerState<AssignmentDialog> {
       initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      locale: const Locale('fr', 'FR'),
     );
     if (picked != null) setState(() => _dueDate = picked);
   }
@@ -90,6 +89,11 @@ class _AssignmentDialogState extends ConsumerState<AssignmentDialog> {
 
     final allClasses = classesAsync.valueOrNull ?? [];
     final teacherClasses = allClasses.where((c) => teacherClassIds.contains(c.id)).toList();
+    final teacherSubjectIds = user?.effectiveSubjectIds ?? [];
+    final allSubjects = subjectsAsync.valueOrNull ?? [];
+    final teacherSubjects = teacherSubjectIds.isNotEmpty
+        ? allSubjects.where((s) => teacherSubjectIds.contains(s.id)).toList()
+        : allSubjects;
 
     return AlertDialog(
       title: const Text('Publier un devoir'),
@@ -114,16 +118,13 @@ class _AssignmentDialogState extends ConsumerState<AssignmentDialog> {
                   validator: (v) => v == null ? 'Requis' : null,
                 ),
                 const SizedBox(height: 16),
-                subjectsAsync.when(
-                  data: (subjects) => DropdownButtonFormField<String>(
-                    value: _selectedSubjectId,
-                    decoration: const InputDecoration(labelText: 'Matière', border: OutlineInputBorder()),
-                    items: subjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                    onChanged: (val) => setState(() => _selectedSubjectId = val),
-                    validator: (v) => v == null ? 'Requis' : null,
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, s) => Text('Erreur: $e'),
+                DropdownButtonFormField<String>(
+                  value: _selectedSubjectId,
+                  decoration: const InputDecoration(labelText: 'Matière', border: OutlineInputBorder()),
+                  hint: Text(teacherSubjects.isEmpty ? 'Aucune matière dans votre profil' : 'Choisir une matière'),
+                  items: teacherSubjects.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                  onChanged: teacherSubjects.isEmpty ? null : (val) => setState(() => _selectedSubjectId = val),
+                  validator: (v) => v == null ? 'Requis' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
