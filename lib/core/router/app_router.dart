@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
 import '../../presentation/providers/auth_provider.dart';
 
+import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/student/student_dashboard.dart';
 import '../../presentation/screens/teacher/teacher_dashboard.dart';
@@ -25,11 +26,15 @@ class _RouterNotifier extends ChangeNotifier {
 
     final user = authState.valueOrNull;
     final isAuthenticated = user != null;
-    final isGoingToLogin = state.matchedLocation == '/login';
+    final loc = state.matchedLocation;
 
-    if (!isAuthenticated && !isGoingToLogin) return '/login';
+    final isPublicPage = loc == '/' || loc == '/login';
 
-    if (isAuthenticated && isGoingToLogin) {
+    // Not authenticated → only allow public pages
+    if (!isAuthenticated && !isPublicPage) return '/';
+
+    // Authenticated → redirect away from public pages to dashboard
+    if (isAuthenticated && isPublicPage) {
       switch (user.role) {
         case UserRole.admin:
           return '/admin';
@@ -49,10 +54,14 @@ class _RouterNotifier extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
     refreshListenable: notifier,
     redirect: notifier.redirect,
     routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const HomeScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
