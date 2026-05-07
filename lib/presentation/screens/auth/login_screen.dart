@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_model.dart';
@@ -42,8 +41,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       success = await ref.read(authStateProvider.notifier).login(
-        _emailController.text.trim(), 
-        _passwordController.text
+        _emailController.text.trim(),
+        _passwordController.text,
       );
     } else {
       final nameStr = _nameController.text.trim().toLowerCase().replaceAll(' ', '.');
@@ -62,18 +61,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!hasUppercase || !hasSpecialCharacters || !hasMinLength) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Le mot de passe doit contenir au moins 6 caractères, une majuscule et un symbole.')),
+          const SnackBar(
+            content: Text('Le mot de passe doit contenir au moins 6 caractères, une majuscule et un symbole.'),
+          ),
         );
         return;
       }
-      
+
       final generatedEmail = '$nameStr@${_selectedRole.name}.com';
-      
+
       success = await ref.read(authStateProvider.notifier).register(
         _nameController.text.trim(),
         generatedEmail,
         _passwordController.text,
-        _selectedRole
+        _selectedRole,
       );
 
       if (success && mounted) {
@@ -113,35 +114,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
-      final user = ref.read(authStateProvider).valueOrNull;
-      if (user != null) {
-        switch (user.role) {
-          case UserRole.admin:
-            context.go('/admin');
-            break;
-          case UserRole.teacher:
-            context.go('/teacher');
-            break;
-          case UserRole.parent:
-            context.go('/parent');
-            break;
-          case UserRole.student:
-            context.go('/student');
-            break;
-        }
-      }
-    } else if (mounted && !_isLoading) {
+    if (!success) {
       final errorState = ref.read(authStateProvider).error;
-      String errorMessage = _isLoginMode 
-          ? "Erreur de connexion. Vérifiez vos identifiants."
+      String errorMessage = _isLoginMode
+          ? "Email ou mot de passe incorrect."
           : "Erreur lors de l'inscription. Ce nom est peut-être déjà pris.";
       if (errorState != null) {
-        errorMessage = "Erreur : $errorState";
+        final errStr = errorState.toString();
+        if (errStr.contains('user-not-found') || errStr.contains('wrong-password') || errStr.contains('invalid-credential')) {
+          errorMessage = "Email ou mot de passe incorrect.";
+        } else if (errStr.contains('email-already-in-use')) {
+          errorMessage = "Ce compte existe déjà.";
+        } else if (errStr.contains('network-request-failed')) {
+          errorMessage = "Erreur réseau. Vérifiez votre connexion.";
+        } else {
+          errorMessage = "Erreur : $errStr";
+        }
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
@@ -150,6 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
     }
+    // Navigation is handled automatically by the router's redirect via refreshListenable
   }
 
   void _switchMode() {
@@ -163,7 +157,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -173,7 +166,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-          // Decorative Circles
           Positioned(
             top: -50,
             left: -50,
@@ -198,7 +190,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-          // Glassmorphism Login Card
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -236,7 +227,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _isLoginMode ? 'Bienvenue dans votre espace numérique' : 'Créez votre profil pour commencer',
+                          _isLoginMode
+                              ? 'Bienvenue dans votre espace numérique'
+                              : 'Créez votre profil pour commencer',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withValues(alpha: 0.8),
@@ -244,13 +237,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32),
-                        
-                        // Fields dynamic display
+
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
-                          child: _isLoginMode 
-                            ? _buildLoginFields()
-                            : _buildRegisterFields(),
+                          child: _isLoginMode
+                              ? _buildLoginFields()
+                              : _buildRegisterFields(),
                         ),
 
                         const SizedBox(height: 16),
@@ -270,7 +262,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 32),
                         SizedBox(
                           width: double.infinity,
@@ -300,9 +292,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         TextButton(
                           onPressed: _switchMode,
                           child: Text(
-                            _isLoginMode 
-                              ? "Pas encore de compte ? S'inscrire" 
-                              : "Déjà un compte ? Se connecter",
+                            _isLoginMode
+                                ? "Pas encore de compte ? S'inscrire"
+                                : "Déjà un compte ? Se connecter",
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                           ),
                         )
@@ -377,10 +369,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               isExpanded: true,
               style: const TextStyle(color: Colors.white, fontSize: 16),
               items: const [
-                DropdownMenuItem(value: UserRole.student, child: Text('🧑‍🎓 Élève')),
-                DropdownMenuItem(value: UserRole.teacher, child: Text('👨‍🏫 Professeur')),
-                DropdownMenuItem(value: UserRole.parent, child: Text('👪 Parent')),
-                DropdownMenuItem(value: UserRole.admin, child: Text('🛡️ Administration')),
+                DropdownMenuItem(value: UserRole.student, child: Text('Élève')),
+                DropdownMenuItem(value: UserRole.teacher, child: Text('Professeur')),
+                DropdownMenuItem(value: UserRole.parent, child: Text('Parent')),
+                DropdownMenuItem(value: UserRole.admin, child: Text('Administration')),
               ],
               onChanged: (UserRole? newValue) {
                 if (newValue != null) {
