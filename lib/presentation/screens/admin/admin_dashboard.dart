@@ -13,6 +13,8 @@ import '../shared/settings_screen.dart';
 import 'add_user_dialog.dart';
 import 'link_student_dialog.dart';
 import 'class_management_tab.dart';
+import 'schedule_management_tab.dart';
+import 'assign_classes_dialog.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -41,6 +43,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       _SystemOverviewTab(adminId: user.id, onNavigateToTab: _goToTab),
       const _UserManagementTab(),
       const ClassManagementTab(),
+      const ScheduleManagementTab(),
       const _ComplaintsTab(),
     ];
 
@@ -128,6 +131,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               icon: Icon(Icons.class_outlined),
               selectedIcon: Icon(Icons.class_),
               label: 'Classes'),
+          NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: 'Emploi du temps'),
           NavigationDestination(
               icon: Icon(Icons.report_outlined),
               selectedIcon: Icon(Icons.report),
@@ -647,9 +654,20 @@ class _UserManagementTabState extends ConsumerState<_UserManagementTab> {
                                           parentName: user.name),
                                     ),
                                   ),
+                                if (user.role == UserRole.teacher)
+                                  IconButton(
+                                    icon: const Icon(Icons.class_,
+                                        color: AppColors.secondary, size: 20),
+                                    tooltip: 'Assigner des classes',
+                                    onPressed: () => showDialog(
+                                      context: context,
+                                      builder: (_) => AssignClassesDialog(
+                                          teacher: user),
+                                    ),
+                                  ),
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined,
-                                      color: AppColors.secondary, size: 20),
+                                      color: AppColors.info, size: 20),
                                   tooltip: 'Modifier',
                                   onPressed: () => _editUser(user),
                                 ),
