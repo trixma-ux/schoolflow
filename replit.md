@@ -76,6 +76,38 @@ All 4 roles (admin, teacher, student, parent) have properly scoped read/write ru
 - `classes`: admins and teachers write
 - `users`: admins can create/delete; users update their own profile (except role field)
 
+### Deploying Firestore Rules
+
+The project is configured for Firebase CLI deployment via `firebase.json` and `.firebaserc`.
+
+**Prerequisites (one-time setup):**
+```bash
+npm install -g firebase-tools
+firebase login
+```
+
+**Deploy rules after any change to `firestore.rules`:**
+```bash
+firebase deploy --only firestore:rules
+```
+
+**Deploy indexes after any change to `firestore.indexes.json`:**
+```bash
+firebase deploy --only firestore:indexes
+```
+
+**Deploy both at once:**
+```bash
+firebase deploy --only firestore
+```
+
+- Firebase project: `schoolflow-42186` (set in `.firebaserc`)
+- Rules file: `firestore.rules`
+- Indexes file: `firestore.indexes.json`
+- Config file: `firebase.json`
+
+> Without deploying, changes to `firestore.rules` only exist locally and have no effect on the live database. Always deploy after editing rules to avoid `permission-denied` errors in production.
+
 ## Bug Fixes Applied (May 2026)
 
 ### Critical Fixes
