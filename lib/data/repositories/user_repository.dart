@@ -6,7 +6,6 @@ class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'users';
 
-  // Récupérer un utilisateur par son ID
   Future<UserModel?> getUserById(String uid) async {
     try {
       final doc = await _firestore.collection(_collection).doc(uid).get();
@@ -19,14 +18,12 @@ class UserRepository {
     return null;
   }
 
-  // Récupérer tous les utilisateurs par rôle
   Future<List<UserModel>> getUsersByRole(UserRole role) async {
     try {
       final querySnapshot = await _firestore
           .collection(_collection)
           .where('role', isEqualTo: role.name)
           .get();
-          
       return querySnapshot.docs
           .map((doc) => UserModel.fromMap(doc.data(), doc.id))
           .toList();
@@ -36,7 +33,6 @@ class UserRepository {
     }
   }
 
-  // Mettre à jour le profil
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore.collection(_collection).doc(user.id).update(user.toMap());
@@ -46,15 +42,20 @@ class UserRepository {
     }
   }
 
-  // Lier un étudiant à un parent
+  Future<void> deleteUserDocument(String userId) async {
+    try {
+      await _firestore.collection(_collection).doc(userId).delete();
+    } catch (e) {
+      debugPrint('Erreur lors de la suppression de l\'utilisateur : $e');
+      throw Exception('Impossible de supprimer l\'utilisateur');
+    }
+  }
+
   Future<void> linkStudentToParent(String parentId, String studentId) async {
     try {
-      // 1. Ajouter le studentId au tableau studentIds du Parent
       await _firestore.collection(_collection).doc(parentId).update({
         'studentIds': FieldValue.arrayUnion([studentId])
       });
-      
-      // 2. Assigner le parentId à l'Étudiant
       await _firestore.collection(_collection).doc(studentId).update({
         'parentId': parentId
       });

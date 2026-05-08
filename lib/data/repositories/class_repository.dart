@@ -6,7 +6,6 @@ class ClassRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'classes';
 
-  // Créer ou mettre à jour une classe
   Future<void> saveClass(ClassModel classModel) async {
     try {
       await _firestore.collection(_collection).doc(classModel.id).set(classModel.toMap());
@@ -15,7 +14,6 @@ class ClassRepository {
     }
   }
 
-  // Obtenir toutes les classes
   Future<List<ClassModel>> getAllClasses() async {
     try {
       final snapshot = await _firestore.collection(_collection).get();
@@ -25,7 +23,6 @@ class ClassRepository {
     }
   }
 
-  // Obtenir les classes d'un professeur
   Future<List<ClassModel>> getClassesForTeacher(String teacherId) async {
     try {
       final snapshot = await _firestore
@@ -38,7 +35,6 @@ class ClassRepository {
     }
   }
 
-  // Obtenir la classe d'un élève
   Future<ClassModel?> getClassForStudent(String studentId) async {
     try {
       final snapshot = await _firestore
@@ -46,7 +42,6 @@ class ClassRepository {
           .where('studentIds', arrayContains: studentId)
           .limit(1)
           .get();
-          
       if (snapshot.docs.isNotEmpty) {
         return ClassModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
       }
@@ -56,22 +51,28 @@ class ClassRepository {
     return null;
   }
 
-  // Ajouter un étudiant à une classe
   Future<void> addStudentToClass(String classId, String studentId) async {
     try {
       await _firestore.collection(_collection).doc(classId).update({
         'studentIds': FieldValue.arrayUnion([studentId])
       });
-      // Mettre à jour l'étudiant
-      await _firestore.collection('users').doc(studentId).update({
-        'classId': classId
-      });
+      await _firestore.collection('users').doc(studentId).update({'classId': classId});
     } catch (e) {
       throw Exception('Impossible d\'ajouter l\'étudiant à la classe');
     }
   }
 
-  // Assigner un professeur à une classe
+  Future<void> removeStudentFromClass(String classId, String studentId) async {
+    try {
+      await _firestore.collection(_collection).doc(classId).update({
+        'studentIds': FieldValue.arrayRemove([studentId])
+      });
+      await _firestore.collection('users').doc(studentId).update({'classId': null});
+    } catch (e) {
+      throw Exception('Impossible de retirer l\'étudiant de la classe');
+    }
+  }
+
   Future<void> assignTeacherToClass(String classId, String teacherId) async {
     try {
       await _firestore.collection(_collection).doc(classId).update({
@@ -79,6 +80,34 @@ class ClassRepository {
       });
     } catch (e) {
       throw Exception('Impossible d\'assigner le professeur à la classe');
+    }
+  }
+
+  Future<void> removeTeacherFromClass(String classId, String teacherId) async {
+    try {
+      await _firestore.collection(_collection).doc(classId).update({
+        'teacherIds': FieldValue.arrayRemove([teacherId])
+      });
+    } catch (e) {
+      throw Exception('Impossible de retirer le professeur de la classe');
+    }
+  }
+
+  Future<void> deleteClass(String classId) async {
+    try {
+      final classDoc = await _firestore.collection(_collection).doc(classId).get();
+      if (classDoc.exists) {
+        final data = classDoc.data()!;
+        final studentIds = List<String>.from(data['studentIds'] ?? []);
+        final batch = _firestore.batch();
+        for (final sid in studentIds) {
+          batch.update(_firestore.collection('users').doc(sid), {'classId': null});
+        }
+        batch.delete(_firestore.collection(_collection).doc(classId));
+        await batch.commit();
+      }
+    } catch (e) {
+      throw Exception('Impossible de supprimer la classe : $e');
     }
   }
 }
