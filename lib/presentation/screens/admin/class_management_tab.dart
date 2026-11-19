@@ -5,13 +5,19 @@ import '../../../data/repositories/class_repository.dart';
 import '../../providers/data_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import 'class_detail_dialog.dart';
+import '../../../core/data/filieres_ci.dart';
+import '../../../core/logic/school_rules.dart';
+import '../../../data/models/user_model.dart';
 
 class ClassManagementTab extends ConsumerWidget {
   const ClassManagementTab({super.key});
 
   void _showAddClassDialog(BuildContext context, WidgetRef ref) {
     final nameCtrl = TextEditingController();
-    final yearCtrl = TextEditingController(text: '2024-2025');
+    final yearCtrl = TextEditingController(text: '2025-2026');
+    final capacityCtrl = TextEditingController();
+    String? filiere;
+    bool autoFill = true;
     bool isSaving = false;
 
     showDialog(
@@ -19,7 +25,7 @@ class ClassManagementTab extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Nouvelle Classe'),
-          content: Column(
+          content: SingleChildScrollView(child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -33,12 +39,45 @@ class ClassManagementTab extends ConsumerWidget {
               TextField(
                 controller: yearCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Année scolaire (ex: 2024-2025)',
+                  labelText: 'Année scolaire (ex: 2025-2026)',
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                value: filiere,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Filière',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text('Aucune (affectation manuelle)')),
+                  ...filieresCi.map((f) => DropdownMenuItem<String?>(
+                      value: f.id,
+                      child: Text('${f.name} — ${f.description}', overflow: TextOverflow.ellipsis))),
+                ],
+                onChanged: (v) => setDialogState(() => filiere = v),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: capacityCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Effectif maximum (optionnel)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (filiere != null)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: autoFill,
+                  onChanged: (v) => setDialogState(() => autoFill = v ?? true),
+                  title: const Text('Y affecter automatiquement les élèves sans classe de cette filière',
+                      style: TextStyle(fontSize: 13)),
+                ),
             ],
-          ),
+          )),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -50,8 +89,17 @@ class ClassManagementTab extends ConsumerWidget {
                   ? null
                   : () async {
                       if (nameCtrl.text.trim().isEmpty) return;
+                      final capText = capacityCtrl.text.trim();
+                      final capacity = capText.isEmpty ? null : int.tryParse(capText);
+                      if (capText.isNotEmpty && (capacity == null || capacity <= 0)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Effectif maximum invalide.'), backgroundColor: AppColors.error),
+                        );
+                        return;
+                      }
                       setDialogState(() => isSaving = true);
                       final firestore = ref.read(firebaseFirestoreProvider);
+                      var assigned = 0;
                       if (firestore != null) {
                         final id = DateTime.now().millisecondsSinceEpoch.toString();
                         final newClass = ClassModel(
@@ -60,17 +108,36 @@ class ClassManagementTab extends ConsumerWidget {
                           academicYear: yearCtrl.text.trim(),
                           teacherIds: const [],
                           studentIds: const [],
+                          filiere: filiere,
+                          capacity: capacity,
                         );
                         await firestore
                             .collection('classes')
                             .doc(id)
                             .set(newClass.toMap());
+                        if (filiere != null && autoFill) {
+                          final users = ref.read(allUsersProvider).valueOrNull ?? <UserModel>[];
+                          final classes = ref.read(classesProvider).valueOrNull ?? <ClassModel>[];
+                          final candidates = SchoolRules.unassignedStudents(users, classes)
+                              .where((u) => u.filiere == filiere)
+                              .toList();
+                          final plan = SchoolRules.planAutoAssignment(candidates, [newClass]);
+                          final repo = ClassRepository();
+                          for (final student in plan.keys) {
+                            try {
+                              await repo.addStudentToClass(id, student.id);
+                              assigned++;
+                            } catch (_) {}
+                          }
+                        }
                       }
                       if (ctx.mounted) Navigator.of(ctx).pop();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Classe créée !'),
+                          SnackBar(
+                              content: Text(assigned > 0
+                                  ? 'Classe créée ! $assigned élève(s) affecté(s) automatiquement.'
+                                  : 'Classe créée !'),
                               backgroundColor: AppColors.success),
                         );
                       }
@@ -209,15 +276,22 @@ class ClassManagementTab extends ConsumerWidget {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15)),
-                                Text(c.academicYear,
+                                Text(
+                                    [
+                                      c.academicYear,
+                                      if (c.filiere != null) 'Série ${c.filiere}',
+                                    ].join(' • '),
                                     style: const TextStyle(
                                         color: AppColors.textSecondary,
                                         fontSize: 12)),
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
-                                    _chip('$studentCount élève(s)',
-                                        AppColors.info),
+                                    _chip(
+                                        c.capacity != null
+                                            ? '$studentCount/${c.capacity} élève(s)'
+                                            : '$studentCount élève(s)',
+                                        c.isFull ? AppColors.warning : AppColors.info),
                                     const SizedBox(width: 8),
                                     _chip('$teacherCount prof(s)',
                                         AppColors.secondary),

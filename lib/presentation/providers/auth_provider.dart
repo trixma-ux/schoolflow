@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../data/repositories/class_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -14,6 +15,10 @@ final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserMod
 
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _repository;
+
+  /// Nom de la classe attribuée automatiquement lors de la dernière
+  /// inscription d'élève (null si aucune).
+  String? lastAutoAssignedClassName;
 
   AuthNotifier(this._repository) : super(const AsyncValue.loading()) {
     checkCurrentUser();
@@ -51,10 +56,22 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
-  Future<bool> register(String name, String email, String password, UserRole role) async {
+  Future<bool> register(String name, String email, String password, UserRole role, {String? filiere}) async {
     state = const AsyncValue.loading();
     try {
-      final user = await _repository.register(name, email, password, role);
+      var user = await _repository.register(name, email, password, role, filiere: filiere);
+      lastAutoAssignedClassName = null;
+      if (user != null && role == UserRole.student && filiere != null) {
+        // Affectation automatique à une classe de la filière (si les règles
+        // Firestore l'autorisent ; sinon l'admin la fera depuis son tableau).
+        try {
+          final cls = await ClassRepository().autoAssignStudent(user);
+          if (cls != null) {
+            lastAutoAssignedClassName = cls.name;
+            user = await _repository.getCurrentUser() ?? user;
+          }
+        } catch (_) {}
+      }
       state = AsyncValue.data(user);
       return user != null;
     } catch (e, st) {

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../../core/data/filieres_ci.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -18,6 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   UserRole _selectedRole = UserRole.student;
+  String? _selectedFiliere;
   bool _isLoading = false;
 
   @override
@@ -68,6 +70,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
+      if (_selectedRole == UserRole.student && _selectedFiliere == null) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veuillez choisir votre filière.')),
+        );
+        return;
+      }
+
       final generatedEmail = '$nameStr@${_selectedRole.name}.com';
 
       success = await ref.read(authStateProvider.notifier).register(
@@ -75,7 +85,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         generatedEmail,
         _passwordController.text,
         _selectedRole,
+        filiere: _selectedRole == UserRole.student ? _selectedFiliere : null,
       );
+      final assignedClass = ref.read(authStateProvider.notifier).lastAutoAssignedClassName;
 
       if (success && mounted) {
         await showDialog(
@@ -100,6 +112,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 18),
                   ),
                   const TextSpan(text: '\n\nVeuillez le conserver précieusement !'),
+                  if (_selectedRole == UserRole.student)
+                    TextSpan(
+                      text: assignedClass != null
+                          ? '\n\nVous avez été affecté(e) automatiquement à la classe $assignedClass.'
+                          : '\n\nAucune classe de votre filière n\'est disponible pour le moment : l\'administration vous affectera à une classe.',
+                    ),
                 ],
               ),
             ),
@@ -384,6 +402,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+        if (_selectedRole == UserRole.student) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                key: const ValueKey('filiere-dropdown'),
+                value: _selectedFiliere,
+                hint: Text('Filière (série)',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+                dropdownColor: AppColors.primary,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                isExpanded: true,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                items: filieresCi
+                    .map((f) => DropdownMenuItem(
+                          value: f.id,
+                          child: Text('${f.name} — ${f.description}',
+                              overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedFiliere = v),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
