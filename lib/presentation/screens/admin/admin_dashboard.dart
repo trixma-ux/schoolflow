@@ -1,3 +1,4 @@
+import 'unassigned_students_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -245,6 +246,9 @@ class _SystemOverviewTabState extends ConsumerState<_SystemOverviewTab> {
                   Icons.family_restroom, AppColors.accent)),
         ]),
         const SizedBox(height: 24),
+
+        const UnassignedStudentsCard(),
+        const SizedBox(height: 16),
 
         subjectsAsync.when(
           data: (subjects) => Container(

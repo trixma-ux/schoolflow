@@ -1,3 +1,4 @@
+import '../../../core/logic/school_rules.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -375,11 +376,21 @@ class _ClassMembersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (classId.isEmpty) {
-      return const Center(child: Text('Pas encore assigné à une classe.', style: TextStyle(color: AppColors.textSecondary)));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Pas encore assigné à une classe.\nL\'administration vous affectera bientôt à une classe de votre filière.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+      );
     }
 
     final classesAsync = ref.watch(classesProvider);
     final usersAsync = ref.watch(allUsersProvider);
+    final subjects = ref.watch(subjectsProvider).valueOrNull ?? const [];
 
     final allClasses = classesAsync.valueOrNull ?? [];
     final allUsers = usersAsync.valueOrNull ?? [];
@@ -387,10 +398,17 @@ class _ClassMembersTab extends ConsumerWidget {
     final cls = allClasses.where((c) => c.id == classId).firstOrNull;
     if (cls == null) return const Center(child: CircularProgressIndicator());
 
+    final me = allUsers.where((u) => u.id == studentId).firstOrNull;
     final students = allUsers.where((u) => u.role == UserRole.student && cls.studentIds.contains(u.id)).toList();
+    final subjectTeachers = SchoolRules.teachersBySubject(
+      cls: cls,
+      users: allUsers,
+      subjects: subjects,
+      studentFiliere: me?.filiere,
+    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         Container(
           margin: const EdgeInsets.all(16),
@@ -403,41 +421,74 @@ class _ClassMembersTab extends ConsumerWidget {
           child: Row(children: [
             const Icon(Icons.class_, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(cls.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              Text('${students.length} élève(s)', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            ]),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(cls.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text(
+                  [
+                    if (cls.filiere != null) 'Série ${cls.filiere}',
+                    '${students.length} élève(s)',
+                  ].join(' • '),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ]),
+            ),
           ]),
         ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: students.length,
-            itemBuilder: (_, i) {
-              final s = students[i];
-              final isMe = s.id == studentId;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: (isMe ? AppColors.primary : AppColors.info).withValues(alpha: 0.15),
-                  child: Text(s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
-                    style: TextStyle(color: isMe ? AppColors.primary : AppColors.info, fontWeight: FontWeight.bold)),
-                ),
-                title: Row(children: [
-                  Text(s.name),
-                  if (isMe) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Moi', style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ]),
-                subtitle: Text(s.email, style: const TextStyle(fontSize: 12)),
-              );
-            },
-          ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text('Mes professeurs par matière',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ),
+        const SizedBox(height: 8),
+        if (subjectTeachers.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Aucun professeur n\'est encore affecté à cette classe.',
+                style: TextStyle(color: AppColors.textSecondary)),
+          )
+        else
+          ...subjectTeachers.map((st) => ListTile(
+                key: ValueKey('subject-${st.subjectId}'),
+                dense: true,
+                leading: Icon(Icons.menu_book,
+                    color: st.teacherNames.isEmpty ? AppColors.textHint : AppColors.secondary),
+                title: Text(st.subjectName),
+                subtitle: Text(
+                  st.teacherNames.isEmpty ? 'Aucun professeur affecté' : st.teacherNames.join(', '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: st.teacherNames.isEmpty ? AppColors.textHint : null,
+                  ),
+                ),
+              )),
+        const Divider(height: 32),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text('Mes camarades', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ),
+        ...students.map((s) {
+          final isMe = s.id == studentId;
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: (isMe ? AppColors.primary : AppColors.info).withValues(alpha: 0.15),
+              child: Text(s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
+                style: TextStyle(color: isMe ? AppColors.primary : AppColors.info, fontWeight: FontWeight.bold)),
+            ),
+            title: Row(children: [
+              Flexible(child: Text(s.name, overflow: TextOverflow.ellipsis)),
+              if (isMe) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('Moi', style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ]),
+            subtitle: Text(s.email, style: const TextStyle(fontSize: 12)),
+          );
+        }),
       ],
     );
   }
