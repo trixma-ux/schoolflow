@@ -45,9 +45,13 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.school_rounded, color: Colors.white, size: 32),
                         const SizedBox(width: 10),
-                        const Text('SchoolFlow',
-                          style: TextStyle(color: Colors.white, fontSize: 22,
-                              fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        const Flexible(
+                          child: Text('SchoolFlow',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white, fontSize: 22,
+                                fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        ),
+                        const SizedBox(width: 12),
                         const Spacer(),
                         _NavBtn(label: 'Se connecter',
                           outlined: true,
@@ -174,9 +178,12 @@ class HomeScreen extends StatelessWidget {
                         isWide
                             ? Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _featureCards(),
+                                children: _expandedInRow(_featureCards()),
                               )
-                            : Column(children: _featureCards()),
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: _featureCards(),
+                              ),
                       ],
                     ),
                   ),
@@ -194,8 +201,12 @@ class HomeScreen extends StatelessWidget {
                           textAlign: TextAlign.center),
                         const SizedBox(height: 32),
                         isWide
-                            ? Row(children: _roleCards())
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _expandedInRow(_roleCards()),
+                              )
                             : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: _roleCards()
                                     .map((w) => Padding(
                                         padding: const EdgeInsets.only(bottom: 12),
@@ -266,8 +277,11 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             const Icon(Icons.school_rounded, color: Colors.white38, size: 18),
                             const SizedBox(width: 8),
-                            Text('SchoolFlow • Côte d\'Ivoire',
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
+                            Flexible(
+                              child: Text('SchoolFlow • Côte d\'Ivoire',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -289,6 +303,12 @@ class HomeScreen extends StatelessWidget {
     width: size, height: size,
     decoration: BoxDecoration(shape: BoxShape.circle, color: color),
   );
+
+  /// Cards are plain widgets; only wrap them in [Expanded] when laid out in a Row
+  /// (wide layout). Spacers (SizedBox) keep their fixed size.
+  List<Widget> _expandedInRow(List<Widget> children) => [
+        for (final w in children) w is SizedBox ? w : Expanded(child: w),
+      ];
 
   List<Widget> _stats() => [
     _Stat(value: '10', label: 'Filières CI'),
@@ -379,12 +399,15 @@ class _HeroBtn extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: primary ? AppColors.primary : Colors.white),
             const SizedBox(width: 10),
-            Text(label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: primary ? AppColors.primary : Colors.white,
-              )),
+            Flexible(
+              child: Text(label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: primary ? AppColors.primary : Colors.white,
+                )),
+            ),
           ],
         ),
       ),
@@ -421,8 +444,7 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: ClipRRect(
+    return ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
@@ -454,7 +476,6 @@ class _FeatureCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -468,8 +489,7 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
@@ -497,7 +517,6 @@ class _RoleCard extends StatelessWidget {
               style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, height: 1.5)),
           ],
         ),
-      ),
     );
   }
 }

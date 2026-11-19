@@ -1,11 +1,11 @@
 {
-    "name": "school_flow",
-    "short_name": "school_flow",
+    "name": "SchoolFlow – Gestion scolaire",
+    "short_name": "SchoolFlow",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F0C29",
+    "theme_color": "#302B63",
+    "description": "SchoolFlow – plateforme de gestion scolaire pour la Côte d'Ivoire : notes, emplois du temps, plaintes et espaces Admin, Professeur, Élève et Parent.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
