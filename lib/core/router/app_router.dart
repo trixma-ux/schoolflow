@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/user_model.dart';
+import 'route_guard.dart';
 import '../../presentation/providers/auth_provider.dart';
 
 import '../../presentation/screens/home/home_screen.dart';
@@ -21,33 +21,11 @@ class _RouterNotifier extends ChangeNotifier {
 
   String? redirect(BuildContext context, GoRouterState state) {
     final authState = _ref.read(authStateProvider);
-
-    if (authState.isLoading) return null;
-
-    final user = authState.valueOrNull;
-    final isAuthenticated = user != null;
-    final loc = state.matchedLocation;
-
-    final isPublicPage = loc == '/' || loc == '/login';
-
-    // Not authenticated → only allow public pages
-    if (!isAuthenticated && !isPublicPage) return '/';
-
-    // Authenticated → redirect away from public pages to dashboard
-    if (isAuthenticated && isPublicPage) {
-      switch (user.role) {
-        case UserRole.admin:
-          return '/admin';
-        case UserRole.teacher:
-          return '/teacher';
-        case UserRole.student:
-          return '/student';
-        case UserRole.parent:
-          return '/parent';
-      }
-    }
-
-    return null;
+    return RouteGuard.redirect(
+      location: state.matchedLocation,
+      isLoading: authState.isLoading,
+      user: authState.hasError ? null : authState.valueOrNull,
+    );
   }
 }
 
@@ -57,6 +35,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     refreshListenable: notifier,
     redirect: notifier.redirect,
+    // Route inconnue : retour à l'accueil (puis au tableau de bord si connecté).
+    errorBuilder: (context, state) => const HomeScreen(),
     routes: [
       GoRoute(
         path: '/',
