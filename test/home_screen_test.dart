@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:school_flow/presentation/screens/home/home_screen.dart';
@@ -27,4 +28,19 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Un espace pour chaque rôle'), findsOneWidget);
   });
+
+  for (final width in [360.0, 390.0]) {
+    testWidgets('logo SchoolFlow non tronqué à ${width.toInt()}px de large', (tester) async {
+      await _pumpAt(tester, Size(width, 844));
+      expect(tester.takeException(), isNull);
+      final logo = find.text('SchoolFlow').first;
+      final paragraph = tester.renderObject<RenderParagraph>(logo);
+      expect(paragraph.didExceedMaxLines, isFalse);
+      // Le texte du logo et le bouton ne se chevauchent pas.
+      final logoRect = tester.getRect(logo);
+      final btnRect = tester.getRect(find.text('Se connecter'));
+      expect(logoRect.right <= btnRect.left, isTrue);
+      expect(logoRect.left >= 0 && btnRect.right <= width, isTrue);
+    });
+  }
 }

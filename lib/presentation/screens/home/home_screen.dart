@@ -40,21 +40,39 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   // ── NavBar ────────────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.sizeOf(context).width < 420 ? 16 : 28,
+                        vertical: 20),
                     child: Row(
                       children: [
-                        const Icon(Icons.school_rounded, color: Colors.white, size: 32),
-                        const SizedBox(width: 10),
-                        const Flexible(
-                          child: Text('SchoolFlow',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white, fontSize: 22,
-                                fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        // Logo : réduit automatiquement (FittedBox) pour ne
+                        // jamais être tronqué à côté du bouton sur mobile.
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.school_rounded, color: Colors.white,
+                                      size: MediaQuery.sizeOf(context).width < 420 ? 28 : 32),
+                                  const SizedBox(width: 8),
+                                  const Text('SchoolFlow',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    style: TextStyle(color: Colors.white, fontSize: 22,
+                                        fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        const Spacer(),
                         _NavBtn(label: 'Se connecter',
                           outlined: true,
+                          compact: MediaQuery.sizeOf(context).width < 420,
                           onTap: () => context.go('/login')),
                       ],
                     ),
@@ -356,21 +374,24 @@ class _NavBtn extends StatelessWidget {
   final String label;
   final bool outlined;
   final VoidCallback onTap;
-  const _NavBtn({required this.label, required this.outlined, required this.onTap});
+  final bool compact;
+  const _NavBtn({required this.label, required this.outlined, required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 18, vertical: compact ? 8 : 10),
         decoration: BoxDecoration(
           color: outlined ? Colors.transparent : AppColors.primary,
           border: outlined ? Border.all(color: Colors.white38) : null,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(label,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: compact ? 13 : 14)),
       ),
     );
   }
