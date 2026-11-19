@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/data/filieres_ci.dart';
 
 class AddUserDialog extends ConsumerStatefulWidget {
   const AddUserDialog({super.key});
@@ -21,6 +22,7 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
   String _password = '';
   UserRole _selectedRole = UserRole.student;
   String? _selectedClassId;
+  String? _selectedFiliere;
   
   bool _isLoading = false;
 
@@ -32,24 +34,34 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
       
       try {
         final authRepo = ref.read(authRepositoryProvider);
+        final isStudent = _selectedRole == UserRole.student;
         final newUser = await authRepo.register(
-          _name, 
-          _email, 
-          _password, 
-          _selectedRole, 
-          _selectedRole == UserRole.student ? _selectedClassId : null
+          _name,
+          _email,
+          _password,
+          _selectedRole,
+          classId: isStudent ? _selectedClassId : null,
+          filiere: isStudent ? _selectedFiliere : null,
         );
-        
-        // Si étudiant et classe sélectionnée, on l'ajoute à la classe
-        if (newUser != null && _selectedRole == UserRole.student && _selectedClassId != null) {
-           final classRepo = ClassRepository();
-           await classRepo.addStudentToClass(_selectedClassId!, newUser.id);
+
+        String message = 'Utilisateur créé avec succès !';
+        if (newUser != null && isStudent) {
+          final classRepo = ClassRepository();
+          if (_selectedClassId != null) {
+            await classRepo.addStudentToClass(_selectedClassId!, newUser.id);
+          } else {
+            // Affectation automatique selon la filière.
+            final cls = await classRepo.autoAssignStudent(newUser);
+            message = cls != null
+                ? 'Élève créé et affecté automatiquement à ${cls.name}.'
+                : 'Élève créé. Aucune classe disponible pour sa filière : il apparaît dans « Élèves sans classe ».';
+          }
         }
-        
+
         if (mounted) {
           Navigator.of(context).pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Utilisateur créé avec succès !'), backgroundColor: AppColors.success),
+            SnackBar(content: Text(message), backgroundColor: AppColors.success),
           );
         }
       } catch (e) {
@@ -116,6 +128,20 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
               ),
               if (_selectedRole == UserRole.student) ...[
                 const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedFiliere,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Filière', border: OutlineInputBorder()),
+                  items: filieresCi
+                      .map((f) => DropdownMenuItem(value: f.id, child: Text('${f.name} — ${f.description}', overflow: TextOverflow.ellipsis)))
+                      .toList(),
+                  onChanged: (val) => setState(() {
+                    _selectedFiliere = val;
+                    _selectedClassId = null;
+                  }),
+                  validator: (val) => val == null ? 'Veuillez choisir une filière' : null,
+                ),
+                const SizedBox(height: 16),
                 Consumer(
                   builder: (context, ref, child) {
                     final classesAsync = ref.watch(classesProvider);
@@ -123,14 +149,19 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (e, s) => Text('Erreur classes: $e'),
                       data: (classes) {
-                        return DropdownButtonFormField<String>(
+                        final compatible = classes
+                            .where((c) => c.filiere == null || c.filiere == _selectedFiliere)
+                            .where((c) => !c.isFull)
+                            .toList();
+                        return DropdownButtonFormField<String?>(
                           value: _selectedClassId,
-                          decoration: const InputDecoration(labelText: 'Classe assignée', border: OutlineInputBorder()),
-                          items: classes.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                          onChanged: (val) {
-                            setState(() => _selectedClassId = val);
-                          },
-                          validator: (val) => val == null ? 'Veuillez sélectionner une classe' : null,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Classe', border: OutlineInputBorder()),
+                          items: [
+                            const DropdownMenuItem<String?>(value: null, child: Text('Automatique (selon la filière)')),
+                            ...compatible.map((c) => DropdownMenuItem<String?>(value: c.id, child: Text(c.name))),
+                          ],
+                          onChanged: (val) => setState(() => _selectedClassId = val),
                         );
                       },
                     );

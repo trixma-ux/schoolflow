@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../../core/logic/school_rules.dart';
 import '../models/class_model.dart';
+import '../models/user_model.dart';
 
 class ClassRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   final String _collection = 'classes';
 
   Future<void> saveClass(ClassModel classModel) async {
@@ -73,13 +75,45 @@ class ClassRepository {
     }
   }
 
+  /// Affecte un professeur à une classe en respectant la limite de
+  /// [SchoolRules.maxClassesPerTeacher] classes, et synchronise `classIds`
+  /// sur son profil pour qu'il voie la classe dans son tableau de bord.
   Future<void> assignTeacherToClass(String classId, String teacherId) async {
+    final teacherDoc = await _firestore.collection('users').doc(teacherId).get();
+    if (teacherDoc.exists && teacherDoc.data() != null) {
+      final teacher = UserModel.fromMap(teacherDoc.data()!, teacherDoc.id);
+      final classes = await getAllClasses();
+      if (!SchoolRules.canAssignTeacher(teacher, classes, classId)) {
+        throw Exception(
+            '${teacher.name} enseigne déjà dans ${SchoolRules.maxClassesPerTeacher} classes (maximum).');
+      }
+    }
     try {
       await _firestore.collection(_collection).doc(classId).update({
         'teacherIds': FieldValue.arrayUnion([teacherId])
       });
+      await _firestore.collection('users').doc(teacherId).update({
+        'classIds': FieldValue.arrayUnion([classId])
+      });
     } catch (e) {
       throw Exception('Impossible d\'assigner le professeur à la classe');
+    }
+  }
+
+  /// Affecte automatiquement un élève à une classe de sa filière (non pleine).
+  /// Retourne la classe choisie, ou null si aucune classe ne correspond ou si
+  /// l'écriture est refusée (l'élève reste alors dans la liste « sans classe »
+  /// de l'administration).
+  Future<ClassModel?> autoAssignStudent(UserModel student, {List<ClassModel>? classes}) async {
+    final all = classes ?? await getAllClasses();
+    final target = SchoolRules.pickClassForFiliere(student.filiere, all);
+    if (target == null) return null;
+    try {
+      await addStudentToClass(target.id, student.id);
+      return target;
+    } catch (e) {
+      debugPrint('Affectation automatique impossible : $e');
+      return null;
     }
   }
 
@@ -87,6 +121,9 @@ class ClassRepository {
     try {
       await _firestore.collection(_collection).doc(classId).update({
         'teacherIds': FieldValue.arrayRemove([teacherId])
+      });
+      await _firestore.collection('users').doc(teacherId).update({
+        'classIds': FieldValue.arrayRemove([classId])
       });
     } catch (e) {
       throw Exception('Impossible de retirer le professeur de la classe');

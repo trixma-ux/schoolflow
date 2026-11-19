@@ -37,7 +37,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserModel?> register(String name, String email, String password, UserRole role, [String? classId]) async {
+  Future<UserModel?> register(String name, String email, String password, UserRole role, {String? classId, String? filiere}) async {
     if (Firebase.apps.isEmpty) {
       throw Exception('Firebase non configuré.');
     }
@@ -95,6 +95,7 @@ class AuthRepositoryImpl implements AuthRepository {
       profilePic: '',
       createdAt: DateTime.now(),
       classId: classId,
+      filiere: filiere,
     );
 
     // Write to Firestore — primary auth is intact so Firestore rules pass.
