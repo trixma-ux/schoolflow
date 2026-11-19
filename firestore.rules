@@ -22,10 +22,16 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'teacher';
     }
 
-    // Users collection — any authenticated user can read/create
+    // Users collection — authenticated users read.
+    // Create: self-signup only for your own uid with a non-privileged role
+    // (student/parent, as offered by the signup screen); admins can create any
+    // user (AddUserDialog writes the doc while the admin is signed in).
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow create: if (isAuthenticated()
+                        && request.auth.uid == userId
+                        && request.resource.data.role in ['student', 'parent'])
+                    || isAdmin();
       allow update: if (isAuthenticated() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
       allow delete: if isAdmin();
     }

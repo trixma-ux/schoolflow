@@ -369,10 +369,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               isExpanded: true,
               style: const TextStyle(color: Colors.white, fontSize: 16),
               items: const [
+                // Auto-inscription limitée aux rôles non privilégiés.
+                // Professeurs et administrateurs sont créés par un admin.
                 DropdownMenuItem(value: UserRole.student, child: Text('Élève')),
-                DropdownMenuItem(value: UserRole.teacher, child: Text('Professeur')),
                 DropdownMenuItem(value: UserRole.parent, child: Text('Parent')),
-                DropdownMenuItem(value: UserRole.admin, child: Text('Administration')),
               ],
               onChanged: (UserRole? newValue) {
                 if (newValue != null) {
