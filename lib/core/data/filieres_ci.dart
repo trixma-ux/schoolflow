@@ -159,3 +159,19 @@ const List<FiliereDef> filieresCi = [
     ],
   ),
 ];
+
+/// Valeur canonique d'une filière (id de [filieresCi] : A, B, C, D, E, G1,
+/// G2, T1, T2, T3). Accepte « c », « Série C », « serie g1 », « T 2 »…
+/// Retourne null si la valeur ne correspond à aucune filière connue.
+/// Les règles Firestore comparent `classes.filiere` et `users.filiere` tels
+/// quels : toute écriture doit donc passer par cette fonction.
+String? canonicalFiliere(String? raw) {
+  if (raw == null) return null;
+  var v = raw.trim().toUpperCase();
+  v = v.replaceFirst(RegExp(r'^S[ÉE]RIE\s*'), '');
+  v = v.replaceAll(RegExp(r'[\s\-_]'), '');
+  for (final f in filieresCi) {
+    if (f.id.toUpperCase() == v) return f.id;
+  }
+  return null;
+}

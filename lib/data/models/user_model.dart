@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../core/data/filieres_ci.dart';
 
 enum UserRole { admin, teacher, student, parent }
 
@@ -59,7 +60,9 @@ class UserModel extends Equatable {
       classIds: map['classIds'] != null ? List<String>.from(map['classIds']) : null,
       subjectId: map['subjectId'],
       subjectIds: map['subjectIds'] != null ? List<String>.from(map['subjectIds']) : null,
-      filiere: map['filiere'],
+      filiere: map['filiere'] is String
+          ? (canonicalFiliere(map['filiere']) ?? map['filiere'])
+          : null,
     );
   }
 
@@ -76,7 +79,7 @@ class UserModel extends Equatable {
       if (classIds != null) 'classIds': classIds,
       if (subjectId != null) 'subjectId': subjectId,
       if (subjectIds != null) 'subjectIds': subjectIds,
-      if (filiere != null) 'filiere': filiere,
+      if (canonicalFiliere(filiere) != null) 'filiere': canonicalFiliere(filiere),
     };
   }
 

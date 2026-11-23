@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../core/data/filieres_ci.dart';
 
 class ClassModel extends Equatable {
   final String id;
@@ -35,7 +36,7 @@ class ClassModel extends Equatable {
       academicYear: map['academicYear'] ?? '',
       teacherIds: map['teacherIds'] != null ? List<String>.from(map['teacherIds']) : [],
       studentIds: map['studentIds'] != null ? List<String>.from(map['studentIds']) : [],
-      filiere: filiere is String && filiere.isNotEmpty ? filiere : null,
+      filiere: filiere is String ? (canonicalFiliere(filiere) ?? (filiere.isNotEmpty ? filiere : null)) : null,
       capacity: rawCapacity is num && rawCapacity > 0 ? rawCapacity.toInt() : null,
     );
   }
@@ -46,7 +47,7 @@ class ClassModel extends Equatable {
       'academicYear': academicYear,
       'teacherIds': teacherIds,
       'studentIds': studentIds,
-      if (filiere != null) 'filiere': filiere,
+      if (canonicalFiliere(filiere) != null) 'filiere': canonicalFiliere(filiere),
       if (capacity != null) 'capacity': capacity,
     };
   }

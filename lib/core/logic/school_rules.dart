@@ -11,6 +11,8 @@ class SchoolRules {
   static const int maxClassesPerTeacher = 5;
 
   static String? _norm(String? f) {
+    final c = canonicalFiliere(f);
+    if (c != null) return c;
     final v = f?.trim().toUpperCase();
     return (v == null || v.isEmpty) ? null : v;
   }
