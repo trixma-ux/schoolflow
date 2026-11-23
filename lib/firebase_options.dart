@@ -20,20 +20,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCkDC8BsDtaOTwVtLfmRWcWJEZO4c-IFuM',
-    appId: '1:795443441609:web:490da4945078b2b4e30218',
-    messagingSenderId: '795443441609',
-    projectId: 'schoolflow-42186',
-    authDomain: 'schoolflow-42186.firebaseapp.com',
-    storageBucket: 'schoolflow-42186.firebasestorage.app',
-    measurementId: 'G-XJM1PE30KB',
+    apiKey: 'AIzaSyARitybYjGZo8gF5uylngTAN4Swly_AqdU',
+    appId: '1:685421875292:web:76daee5da3b1ed55765699',
+    messagingSenderId: '685421875292',
+    projectId: 'schoolflow-steve',
+    authDomain: 'schoolflow-steve.firebaseapp.com',
+    storageBucket: 'schoolflow-steve.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAhFRN4l00OBj13nQaffJ-TwyHL9ZqO4oc',
-    appId: '1:795443441609:android:d57cbe35ad48ed53e30218',
-    messagingSenderId: '795443441609',
-    projectId: 'schoolflow-42186',
-    storageBucket: 'schoolflow-42186.firebasestorage.app',
+    apiKey: 'AIzaSyD072-B96sFVX2cRxGqzhOT8Dq1lowti5g',
+    appId: '1:685421875292:android:4b47e16edc12bdcc765699',
+    messagingSenderId: '685421875292',
+    projectId: 'schoolflow-steve',
+    storageBucket: 'schoolflow-steve.firebasestorage.app',
   );
 }

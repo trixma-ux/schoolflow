@@ -62,7 +62,7 @@ Configured as a static site deployment:
 
 ## Firebase Configuration
 
-Firebase project: `schoolflow-42186`
+Firebase project: `schoolflow-steve`
 - Authentication enabled
 - Firestore enabled
 - Config in `lib/firebase_options.dart`
@@ -101,7 +101,7 @@ firebase deploy --only firestore:indexes
 firebase deploy --only firestore
 ```
 
-- Firebase project: `schoolflow-42186` (set in `.firebaserc`)
+- Firebase project: `schoolflow-steve` (set in `.firebaserc`)
 - Rules file: `firestore.rules`
 - Indexes file: `firestore.indexes.json`
 - Config file: `firebase.json`
