@@ -1,3 +1,4 @@
+import '../../../data/models/class_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -31,11 +32,14 @@ class _TeacherDashboardState extends ConsumerState<TeacherDashboard> {
     if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     final unread = ref.watch(unreadNotificationsCountProvider(user.id));
-    final classIds = user.classIds ?? [];
+    // Classes faisant autorité : celles dont teacherIds contient l'uid
+    // (users.classIds est auto-déclaré et ignoré par les règles).
+    final myClasses = ref.watch(teacherClassesProvider(user.id)).valueOrNull ?? const <ClassModel>[];
+    final classIds = myClasses.map((c) => c.id).toList();
 
     final pages = [
       _ActionsTab(teacherId: user.id, classIds: classIds),
-      _GradesTab(teacherId: user.id),
+      _GradesTab(teacherId: user.id, classIds: classIds),
       _ClassMembersTab(teacher: user),
       _NotificationsTab(userId: user.id),
     ];
@@ -137,7 +141,7 @@ class _ActionsTab extends ConsumerWidget {
                     children: [
                       const Text('Profil incomplet', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning)),
                       const SizedBox(height: 4),
-                      const Text('Configurez votre filière, vos matières et classes.', style: TextStyle(fontSize: 13)),
+                      const Text('Configurez votre filière et vos matières. Les classes vous sont affectées par l\'administration.', style: TextStyle(fontSize: 13)),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => showDialog(context: context, builder: (_) => const TeacherProfileDialog()),
@@ -240,12 +244,14 @@ class _ActionsTab extends ConsumerWidget {
 
 class _GradesTab extends ConsumerWidget {
   final String teacherId;
-  const _GradesTab({required this.teacherId});
+  final List<String> classIds;
+  const _GradesTab({required this.teacherId, required this.classIds});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gradesAsync = ref.watch(teacherGradesProvider(teacherId));
-    final users = ref.watch(allUsersProvider).valueOrNull ?? [];
+    // Noms des élèves : une requête classId == X par classe du professeur.
+    final users = ref.watch(studentsOfClassesProvider(idsKey(classIds))).valueOrNull ?? const <UserModel>[];
     final subjects = ref.watch(subjectsProvider).valueOrNull ?? [];
 
     return gradesAsync.when(
@@ -328,11 +334,9 @@ class _ClassMembersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final classesAsync = ref.watch(classesProvider);
-    final usersAsync = ref.watch(allUsersProvider);
 
     final classes = classesAsync.valueOrNull ?? [];
-    final allUsers = usersAsync.valueOrNull ?? [];
-    final myClasses = classes.where((c) => (teacher.classIds ?? []).contains(c.id)).toList();
+    final myClasses = classes.where((c) => c.teacherIds.contains(teacher.id)).toList();
 
     if (myClasses.isEmpty) {
       return const Center(child: Text('Aucune classe assignée.', style: TextStyle(color: AppColors.textSecondary)));
@@ -345,8 +349,12 @@ class _ClassMembersTab extends ConsumerWidget {
           TabBar(isScrollable: true, tabs: myClasses.map((c) => Tab(text: c.name)).toList()),
           Expanded(
             child: TabBarView(
-              children: myClasses.map((cls) {
-                final students = allUsers.where((u) => u.role == UserRole.student && cls.studentIds.contains(u.id)).toList();
+              children: myClasses.map((cls) => Consumer(builder: (context, ref, _) {
+                // Élèves de la classe : where classId == cls.id (règles 6895d1f).
+                final students = (ref.watch(classMembersProvider(cls.id)).valueOrNull ?? const <UserModel>[])
+                    .where((u) => u.role == UserRole.student)
+                    .toList()
+                  ..sort((a, b) => a.name.compareTo(b.name));
                 if (students.isEmpty) {
                   return const Center(child: Text('Aucun élève dans cette classe.', style: TextStyle(color: AppColors.textSecondary)));
                 }
@@ -366,7 +374,7 @@ class _ClassMembersTab extends ConsumerWidget {
                     );
                   },
                 );
-              }).toList(),
+              })).toList(),
             ),
           ),
         ],

@@ -82,13 +82,14 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).valueOrNull;
-    final teacherClassIds = user?.classIds ?? [];
-    final classesAsync = ref.watch(classesProvider);
-    final usersAsync = ref.watch(allUsersProvider);
+    // Classes faisant autorité : classes.where('teacherIds', arrayContains: uid).
+    final classesAsync = ref.watch(teacherClassesProvider(user?.id ?? ''));
+    // Élèves de la classe choisie : where classId == _selectedClassId.
+    final usersAsync = ref.watch(classMembersProvider(_selectedClassId ?? ''));
     final subjectsAsync = ref.watch(subjectsProvider);
 
     final allClasses = classesAsync.valueOrNull ?? [];
-    final teacherClasses = allClasses.where((c) => teacherClassIds.contains(c.id)).toList();
+    final teacherClasses = allClasses;
     final allUsers = usersAsync.valueOrNull ?? [];
     final allSubjects = subjectsAsync.valueOrNull ?? [];
 
@@ -113,7 +114,7 @@ class _GradeEntryDialogState extends ConsumerState<GradeEntryDialog> {
     } catch (_) {}
 
     final studentsInClass = selectedClass != null
-        ? allUsers.where((u) => u.role == UserRole.student && selectedClass!.studentIds.contains(u.id)).toList()
+        ? allUsers.where((u) => u.role == UserRole.student).toList()
         : <UserModel>[];
 
     return AlertDialog(

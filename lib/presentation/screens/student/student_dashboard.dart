@@ -388,21 +388,24 @@ class _ClassMembersTab extends ConsumerWidget {
       );
     }
 
+    // Requêtes ciblées (règles 6895d1f) : mon profil, mes camarades
+    // (classId == ma classe) et les professeurs (role in [teacher, admin]).
     final classesAsync = ref.watch(classesProvider);
-    final usersAsync = ref.watch(allUsersProvider);
+    final me = ref.watch(userDocProvider(studentId)).valueOrNull;
+    final classmates = ref.watch(classMembersProvider(classId)).valueOrNull ?? const <UserModel>[];
+    final staff = ref.watch(staffProvider).valueOrNull ?? const <UserModel>[];
     final subjects = ref.watch(subjectsProvider).valueOrNull ?? const [];
 
     final allClasses = classesAsync.valueOrNull ?? [];
-    final allUsers = usersAsync.valueOrNull ?? [];
 
     final cls = allClasses.where((c) => c.id == classId).firstOrNull;
     if (cls == null) return const Center(child: CircularProgressIndicator());
 
-    final me = allUsers.where((u) => u.id == studentId).firstOrNull;
-    final students = allUsers.where((u) => u.role == UserRole.student && cls.studentIds.contains(u.id)).toList();
+    final students = classmates.where((u) => u.role == UserRole.student).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
     final subjectTeachers = SchoolRules.teachersBySubject(
       cls: cls,
-      users: allUsers,
+      users: staff,
       subjects: subjects,
       studentFiliere: me?.filiere,
     );

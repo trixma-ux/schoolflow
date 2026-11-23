@@ -66,7 +66,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final subjects = ref.watch(subjectsProvider).valueOrNull ?? [];
     final classes = ref.watch(classesProvider).valueOrNull ?? [];
-    final allUsers = ref.watch(allUsersProvider).valueOrNull ?? [];
+    // Enfants d'un parent : une lecture doc() par enfant (règles 6895d1f).
+    final children = user.role == UserRole.parent
+        ? ref.watch(childrenProvider(idsKey(user.studentIds ?? const []))).valueOrNull ?? const []
+        : const [];
 
     return Scaffold(
       appBar: AppBar(
@@ -267,7 +270,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const Text('Aucun enfant associé', style: TextStyle(color: AppColors.textSecondary))
                       else
                         ...user.studentIds!.map((sid) {
-                          final student = allUsers.where((u) => u.id == sid).firstOrNull;
+                          final student = children.where((u) => u.id == sid).firstOrNull;
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             dense: true,
