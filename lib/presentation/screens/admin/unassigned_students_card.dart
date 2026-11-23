@@ -1,3 +1,4 @@
+import '../../../core/utils/error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,7 +39,7 @@ class _UnassignedStudentsCardState extends ConsumerState<UnassignedStudentsCard>
       await _repo.addStudentToClass(cls.id, student.id);
       _snack('${student.name} affecté(e) à ${cls.name}.', AppColors.success);
     } catch (e) {
-      _snack('Erreur : $e', AppColors.error);
+      _snack('Erreur : ${errorText(e)}', AppColors.error);
     } finally {
       if (mounted) setState(() => _busy.remove(student.id));
     }

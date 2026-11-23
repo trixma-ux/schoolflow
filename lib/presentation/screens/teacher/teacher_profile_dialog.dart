@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/utils/error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/data/filieres_ci.dart';
@@ -82,7 +84,7 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
       final firestore = ref.read(firebaseFirestoreProvider);
       if (firestore != null) {
         await firestore.collection('users').doc(user.id).update({
-          'filiere': _selectedFiliereId,
+          'filiere': canonicalFiliere(_selectedFiliereId),
           'subjectIds': _selectedSubjectIds,
           'subjectId': _selectedSubjectIds.first,
           'classIds': _selectedClassIds,
@@ -97,10 +99,20 @@ class _TeacherProfileDialogState extends ConsumerState<TeacherProfileDialog> {
           const SnackBar(content: Text('Profil mis à jour !'), backgroundColor: AppColors.success),
         );
       }
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.code == 'permission-denied'
+                ? 'Enregistrement refusé : un professeur ne peut pas avoir plus de $_maxClasses classes.'
+                : 'Erreur : ${e.message ?? e.code}'),
+            backgroundColor: AppColors.error),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Erreur : ${errorText(e)}'), backgroundColor: AppColors.error),
         );
       }
     } finally {
