@@ -67,7 +67,8 @@ class _MessageDialogState extends ConsumerState<MessageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final usersAsync = ref.watch(allUsersProvider);
+    // Destinataires : where role in [parent, admin] (règles 6895d1f).
+    final usersAsync = ref.watch(parentsAndAdminsProvider);
 
     return AlertDialog(
       title: const Text('Envoyer un message'),

@@ -120,13 +120,10 @@ class _ChildOverviewCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gradesAsync = ref.watch(studentGradesProvider(studentId));
-    final usersAsync = ref.watch(allUsersProvider);
+    // Lecture ciblée users/{studentId} (autorisée par isParentOf).
+    final UserModel? student = ref.watch(userDocProvider(studentId)).valueOrNull;
     final classesAsync = ref.watch(classesProvider);
     final subjects = ref.watch(subjectsProvider).valueOrNull ?? [];
-
-    final allUsers = usersAsync.valueOrNull ?? [];
-    UserModel? student;
-    try { student = allUsers.firstWhere((u) => u.id == studentId); } catch (_) {}
 
     final allClasses = classesAsync.valueOrNull ?? [];
     String className = '';

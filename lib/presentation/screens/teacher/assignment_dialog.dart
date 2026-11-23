@@ -83,12 +83,12 @@ class _AssignmentDialogState extends ConsumerState<AssignmentDialog> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).valueOrNull;
-    final teacherClassIds = user?.classIds ?? [];
-    final classesAsync = ref.watch(classesProvider);
+    // Classes faisant autorité : classes.where('teacherIds', arrayContains: uid).
+    final classesAsync = ref.watch(teacherClassesProvider(user?.id ?? ''));
     final subjectsAsync = ref.watch(subjectsProvider);
 
     final allClasses = classesAsync.valueOrNull ?? [];
-    final teacherClasses = allClasses.where((c) => teacherClassIds.contains(c.id)).toList();
+    final teacherClasses = allClasses;
     final teacherSubjectIds = user?.effectiveSubjectIds ?? [];
     final allSubjects = subjectsAsync.valueOrNull ?? [];
     final teacherSubjects = teacherSubjectIds.isNotEmpty
