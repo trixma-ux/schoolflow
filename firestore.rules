@@ -22,6 +22,50 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'teacher';
     }
 
+    function isStudent() {
+      return isAuthenticated() && getUserRole() == 'student';
+    }
+
+    function isParent() {
+      return isAuthenticated() && getUserRole() == 'parent';
+    }
+
+    // ---- Ownership helpers (teachers / parents) ----
+    // A teacher "has" a class only if the class lists them in teacherIds
+    // (maintained by the admin). users.classIds is self-declared by the teacher
+    // (TeacherProfileDialog) and is NOT trusted for authorization.
+    function teachesClass(classId) {
+      return classId is string
+        && get(/databases/$(database)/documents/classes/$(classId))
+             .data.get('teacherIds', []).hasAny([request.auth.uid]);
+    }
+
+    // Subject ownership is modelled on the teacher's profile:
+    // users.subjectIds (list) and the legacy users.subjectId (string).
+    function teachesSubject(subjectId) {
+      let me = getUserData();
+      return subjectId is string
+        && (me.get('subjectIds', []).hasAny([subjectId])
+            || me.get('subjectId', null) == subjectId);
+    }
+
+    // The student is currently in a class the teacher teaches.
+    function teachesStudent(studentId) {
+      let s = get(/databases/$(database)/documents/users/$(studentId)).data;
+      return studentId is string
+        && s.get('role', null) == 'student'
+        && teachesClass(s.get('classId', null));
+    }
+
+    function isParentOf(studentId) {
+      return isParent() && getUserData().get('studentIds', []).hasAny([studentId]);
+    }
+
+    // The signed-in student's own class (null if none / not a student).
+    function myClassId() {
+      return getUserData().get('classId', null);
+    }
+
     // Users collection — authenticated users read.
     // Create: self-signup only for your own uid with a non-privileged role
     // (student/parent, as offered by the signup screen) and without a class
@@ -61,8 +105,26 @@ service cloud.firestore {
         && (!changed.hasAny(['classId']) || isStudentSelfAssigningClass(userId));
     }
 
+    // Users read, by role:
+    //  - everyone: own doc; teacher/admin docs (names for subjects, messaging);
+    //  - student: classmates (same classId);
+    //  - parent: their children (ids in their studentIds);
+    //  - teacher: students of classes they teach (classes.teacherIds), and
+    //    parent docs (MessageDialog lets a teacher write to parents);
+    //  - admin: everything.
+    // List queries must be shaped accordingly (e.g. where classId == X,
+    // where role in [teacher, admin], where role == parent, doc gets by id).
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+                  && (request.auth.uid == userId
+                      || resource.data.get('role', null) in ['teacher', 'admin']
+                      || isAdmin()
+                      || (isStudent() && myClassId() is string
+                          && resource.data.get('classId', null) == myClassId())
+                      || isParentOf(userId)
+                      || (isTeacher()
+                          && (resource.data.get('role', null) == 'parent'
+                              || teachesClass(resource.data.get('classId', null)))));
       allow create: if classIdsWithinLimit()
                     && ((isAuthenticated()
                          && request.auth.uid == userId
@@ -114,58 +176,159 @@ service cloud.firestore {
       allow update: if isAdmin() || isTeacherEditingOwnClass() || isStudentJoiningClass();
     }
 
-    // Subjects — all authenticated users read; admin write
+    // Subjects — all authenticated users read (subject names/filières are
+    // needed by every role's screens); admin write.
     match /subjects/{subjectId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Grades — all authenticated users can read (app filters by role)
-    // Write restricted to admin and teachers
+    // Grades — fields: studentId, subjectId, teacherId, score, maxScore, type,
+    // date, comment. A teacher may write a grade only as themselves, for a
+    // subject they teach, for a student currently in a class they teach;
+    // updates/deletes are checked on the stored doc AND the new doc so a grade
+    // cannot be moved to another student/subject/teacher.
+    function teacherOwnsGrade(d) {
+      return isTeacher()
+        && d.get('teacherId', null) == request.auth.uid
+        && teachesSubject(d.get('subjectId', null))
+        && teachesStudent(d.get('studentId', null));
+    }
+
     match /grades/{gradeId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
+      allow read: if isAuthenticated()
+                  && (resource.data.get('studentId', null) == request.auth.uid
+                      || isAdmin()
+                      || isParentOf(resource.data.get('studentId', null))
+                      || (isTeacher()
+                          && (resource.data.get('teacherId', null) == request.auth.uid
+                              || teachesStudent(resource.data.get('studentId', null)))));
+      allow create: if isAdmin() || teacherOwnsGrade(request.resource.data);
+      allow update: if isAdmin()
+                    || (teacherOwnsGrade(resource.data) && teacherOwnsGrade(request.resource.data));
+      allow delete: if isAdmin() || teacherOwnsGrade(resource.data);
     }
 
-    // Assignments — all authenticated users read; admin/teacher write
+    // Assignments — fields: classId, subjectId, teacherId, title, description,
+    // dueDate, attachments. Teacher: own classes (teacherIds) + own subjects.
+    function teacherOwnsAssignment(d) {
+      return isTeacher()
+        && d.get('teacherId', null) == request.auth.uid
+        && teachesSubject(d.get('subjectId', null))
+        && teachesClass(d.get('classId', null));
+    }
+
     match /assignments/{assignmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
+      allow read: if isAuthenticated()
+                  && (isAdmin()
+                      || (isStudent() && myClassId() is string
+                          && resource.data.get('classId', null) == myClassId())
+                      || (isTeacher()
+                          && (resource.data.get('teacherId', null) == request.auth.uid
+                              || teachesClass(resource.data.get('classId', null)))));
+      allow create: if isAdmin() || teacherOwnsAssignment(request.resource.data);
+      allow update: if isAdmin()
+                    || (teacherOwnsAssignment(resource.data) && teacherOwnsAssignment(request.resource.data));
+      allow delete: if isAdmin() || teacherOwnsAssignment(resource.data);
     }
 
-    // Schedules — all authenticated users read; admin write
+    // Schedules — student: own class; teacher: own slots / own classes; admin write.
     match /schedules/{scheduleId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+                  && (isAdmin()
+                      || (isStudent() && myClassId() is string
+                          && resource.data.get('classId', null) == myClassId())
+                      || (isTeacher()
+                          && (resource.data.get('teacherId', null) == request.auth.uid
+                              || teachesClass(resource.data.get('classId', null)))));
       allow write: if isAdmin();
     }
 
-    // Notifications — all authenticated users can read/write their own
+    // Notifications — fields: receiverId, senderId, title, message, createdAt,
+    // isRead, type. Read: receiver (+ admin). Create: teacher (as sender,
+    // unread) or admin. Update: receiver may only mark read (isRead/readAt).
+    // Delete: admin only (no client screen deletes notifications).
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
-    }
-
-    // Submissions — all authenticated users read; student create; admin/teacher update
-    match /submissions/{submissionId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() || isTeacher();
-    }
-
-    // Absences — all authenticated users read; admin/teacher write
-    match /absences/{absenceId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
-    }
-
-    // Complaints — all authenticated users read; any authenticated user create; admin update/delete
-    match /complaints/{complaintId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
+      allow read: if isAuthenticated()
+                  && (resource.data.get('receiverId', null) == request.auth.uid || isAdmin());
+      allow create: if isAdmin()
+                    || (isTeacher()
+                        && request.resource.data.get('senderId', null) == request.auth.uid
+                        && request.resource.data.get('receiverId', null) is string
+                        && request.resource.data.get('isRead', false) == false);
+      allow update: if isAdmin()
+                    || (isAuthenticated()
+                        && resource.data.get('receiverId', null) == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt'])
+                        && request.resource.data.get('isRead', false) is bool);
       allow delete: if isAdmin();
+    }
+
+    // Submissions — fields: assignmentId, studentId, submittedAt, attachments,
+    // grade, feedback. Student submits for an assignment of their own class
+    // (no grade/feedback); the assignment's teacher may set grade/feedback.
+    function assignmentTeacherIsMe(assignmentId) {
+      return assignmentId is string
+        && get(/databases/$(database)/documents/assignments/$(assignmentId))
+             .data.get('teacherId', null) == request.auth.uid;
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.get('studentId', null) == request.auth.uid
+                      || isAdmin()
+                      || isParentOf(resource.data.get('studentId', null))
+                      || (isTeacher() && assignmentTeacherIsMe(resource.data.get('assignmentId', null))));
+      allow create: if isAdmin()
+                    || (isStudent()
+                        && request.resource.data.get('studentId', null) == request.auth.uid
+                        && request.resource.data.get('assignmentId', null) is string
+                        && myClassId() is string
+                        && get(/databases/$(database)/documents/assignments/$(request.resource.data.assignmentId))
+                             .data.get('classId', null) == myClassId()
+                        && !('grade' in request.resource.data)
+                        && !('feedback' in request.resource.data));
+      allow update: if isAdmin()
+                    || (isTeacher()
+                        && assignmentTeacherIsMe(resource.data.get('assignmentId', null))
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grade', 'feedback']));
+      allow delete: if isAdmin();
+    }
+
+    // Absences — fields: studentId, teacherId, classId, date, status, reason.
+    // Teacher: as themselves, for a class they teach, for a student of that class.
+    function teacherOwnsAbsence(d) {
+      return isTeacher()
+        && d.get('teacherId', null) == request.auth.uid
+        && teachesClass(d.get('classId', null))
+        && d.get('studentId', null) is string
+        && get(/databases/$(database)/documents/users/$(d.studentId)).data.get('classId', null) == d.classId;
+    }
+
+    match /absences/{absenceId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.get('studentId', null) == request.auth.uid
+                      || isAdmin()
+                      || isParentOf(resource.data.get('studentId', null))
+                      || (isTeacher()
+                          && (resource.data.get('teacherId', null) == request.auth.uid
+                              || teachesClass(resource.data.get('classId', null)))));
+      allow create: if isAdmin() || teacherOwnsAbsence(request.resource.data);
+      allow update: if isAdmin()
+                    || (teacherOwnsAbsence(resource.data) && teacherOwnsAbsence(request.resource.data));
+      allow delete: if isAdmin() || teacherOwnsAbsence(resource.data);
+    }
+
+    // Complaints — student creates their own (pending, no admin response) and
+    // reads their own; admin reads/answers/deletes all.
+    match /complaints/{complaintId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.get('studentId', null) == request.auth.uid || isAdmin());
+      allow create: if isStudent()
+                    && request.resource.data.get('studentId', null) == request.auth.uid
+                    && request.resource.data.get('status', 'pending') == 'pending'
+                    && request.resource.data.get('adminResponse', null) == null;
+      allow update, delete: if isAdmin();
     }
   }
 }
