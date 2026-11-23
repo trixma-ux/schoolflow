@@ -5,7 +5,7 @@ import '../../data/models/user_model.dart';
 class RouteGuard {
   RouteGuard._();
 
-  static const publicPaths = {'/', '/login'};
+  static const publicPaths = {'/', '/login', '/register'};
 
   static const Map<UserRole, String> dashboards = {
     UserRole.admin: '/admin',

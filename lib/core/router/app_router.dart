@@ -47,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: '/register',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
         path: '/student',
         builder: (context, state) => const StudentDashboard(),
       ),

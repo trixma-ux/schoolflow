@@ -15,6 +15,7 @@ void main() {
     }
     expect(r('/', null), isNull);
     expect(r('/login', null), isNull);
+    expect(r('/register', null), isNull);
   });
 
   test('pendant le chargement de la session : aucune redirection', () {
@@ -34,6 +35,7 @@ void main() {
       expect(r(home, user(role)), isNull);
       expect(r('/', user(role)), home);
       expect(r('/login', user(role)), home);
+      expect(r('/register', user(role)), home);
       expect(r('/nimporte-quoi', user(role)), home);
     }
   });

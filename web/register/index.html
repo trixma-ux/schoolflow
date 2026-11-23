@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SchoolFlow</title>
+  <script>
+    (function () {
+      var base = '/schoolflow/';
+      var path = window.location.pathname || '/';
+      var query = window.location.search || '';
+      var hash = window.location.hash || '';
+
+      // Already on a hash route: do not bounce through 404.html again.
+      if (hash.indexOf('#/') === 0) {
+        window.location.replace(base + hash);
+        return;
+      }
+
+      var rest = path;
+      if (path.indexOf(base) === 0) {
+        rest = path.slice(base.length);
+      } else if (path.charAt(0) === '/') {
+        rest = path.slice(1);
+      }
+      if (rest.charAt(rest.length - 1) === '/') {
+        rest = rest.slice(0, -1);
+      }
+
+      // Guard: never redirect 404.html or the index to #/404.html (loop).
+      if (!rest || rest === '404.html' || rest === 'index.html') {
+        window.location.replace(base + query);
+        return;
+      }
+
+      window.location.replace(base + '#/' + rest + query);
+    })();
+  </script>
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=/schoolflow/">
+  </noscript>
+</head>
+<body>
+  <p>Redirection vers <a href="/schoolflow/">SchoolFlow</a>…</p>
+</body>
+</html>

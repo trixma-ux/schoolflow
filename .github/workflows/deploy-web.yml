@@ -34,7 +34,12 @@ jobs:
         run: flutter build web --release --base-href /schoolflow/
 
       - name: Confirm SPA 404 redirect is included
-        run: test -f build/web/404.html
+        run: |
+          test -f build/web/404.html
+          test -f build/web/login/index.html
+          test -f build/web/register/index.html
+          test -f build/web/login.html
+          test -f build/web/register.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
