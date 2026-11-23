@@ -47,11 +47,17 @@ service cloud.firestore {
              .data.get('studentIds', []).hasAny([userId]);
     }
 
+    // Non-admin self-update: role and studentIds (a parent's linked children,
+    // set by LinkStudentDialog / linkStudentToParent on the admin side) are
+    // admin-only. filiere is admin-only except for a teacher on their own
+    // profile (TeacherProfileDialog « Gérer ma filière, matières et classes »
+    // writes filiere/subjectIds/subjectId/classIds).
     function isAllowedSelfUpdate(userId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return isAuthenticated()
         && request.auth.uid == userId
-        && !changed.hasAny(['role', 'filiere'])
+        && !changed.hasAny(['role', 'studentIds'])
+        && (!changed.hasAny(['filiere']) || resource.data.get('role', null) == 'teacher')
         && (!changed.hasAny(['classId']) || isStudentSelfAssigningClass(userId));
     }
 
@@ -61,14 +67,15 @@ service cloud.firestore {
                     && ((isAuthenticated()
                          && request.auth.uid == userId
                          && request.resource.data.role in ['student', 'parent']
-                         && request.resource.data.get('classId', null) == null)
+                         && request.resource.data.get('classId', null) == null
+                         && request.resource.data.get('studentIds', []).size() == 0)
                         || isAdmin());
       allow update: if classIdsWithinLimit()
                     && (isAllowedSelfUpdate(userId) || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Classes — all authenticated users read; admin/teacher write.
+    // Classes — all authenticated users read; admin writes; teachers limited (below).
     // A student may add exactly their own uid to studentIds (auto-affectation
     // at signup) if: they have no class yet, they are not already listed, the
     // class filière matches theirs, and the class is not full (capacity
@@ -88,10 +95,23 @@ service cloud.firestore {
             || before.size() < resource.data.capacity);
     }
 
+    // Teachers: update only a class that lists them in teacherIds (the
+    // authoritative link, maintained by the admin via assignTeacherToClass;
+    // the teacher's own users.classIds is self-editable so it is NOT trusted),
+    // and only the descriptive fields name/academicYear. filiere, capacity,
+    // teacherIds and studentIds are admin-only. No teacher screen writes to
+    // classes today; create/delete are admin-only.
+    function isTeacherEditingOwnClass() {
+      return isTeacher()
+        && resource.data.get('teacherIds', []).hasAny([request.auth.uid])
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name', 'academicYear']);
+    }
+
     match /classes/{classId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
-      allow update: if isStudentJoiningClass();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isTeacherEditingOwnClass() || isStudentJoiningClass();
     }
 
     // Subjects — all authenticated users read; admin write
