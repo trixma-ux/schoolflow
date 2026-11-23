@@ -5,7 +5,15 @@ import '../models/class_model.dart';
 import '../models/user_model.dart';
 
 class ClassRepository {
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  ClassRepository({FirebaseFirestore? firestore}) : _injected = firestore;
+
+  final FirebaseFirestore? _injected;
+  FirebaseFirestore get _firestore => _injected ?? FirebaseFirestore.instance;
+
+  /// Message affiché quand les règles refusent une 6ᵉ classe à un professeur.
+  static String tooManyClassesMessage(String teacherName) =>
+      '$teacherName enseigne déjà dans ${SchoolRules.maxClassesPerTeacher} classes : '
+      'impossible d\'en ajouter une 6ᵉ. Retirez-le d\'abord d\'une autre classe.';
   final String _collection = 'classes';
 
   Future<void> saveClass(ClassModel classModel) async {
@@ -53,25 +61,34 @@ class ClassRepository {
     return null;
   }
 
+  /// Ajoute l'élève à la classe de façon atomique (WriteBatch) :
+  /// `classes/{id}.studentIds` et `users/{uid}.classId` sont écrits ensemble,
+  /// ce que les règles d'auto-affectation exigent.
   Future<void> addStudentToClass(String classId, String studentId) async {
     try {
-      await _firestore.collection(_collection).doc(classId).update({
+      final batch = _firestore.batch();
+      batch.update(_firestore.collection(_collection).doc(classId), {
         'studentIds': FieldValue.arrayUnion([studentId])
       });
-      await _firestore.collection('users').doc(studentId).update({'classId': classId});
+      batch.update(_firestore.collection('users').doc(studentId), {'classId': classId});
+      await batch.commit();
     } catch (e) {
-      throw Exception('Impossible d\'ajouter l\'étudiant à la classe');
+      debugPrint('addStudentToClass: $e');
+      throw Exception('Impossible d\'ajouter l\'élève à la classe.');
     }
   }
 
   Future<void> removeStudentFromClass(String classId, String studentId) async {
     try {
-      await _firestore.collection(_collection).doc(classId).update({
+      final batch = _firestore.batch();
+      batch.update(_firestore.collection(_collection).doc(classId), {
         'studentIds': FieldValue.arrayRemove([studentId])
       });
-      await _firestore.collection('users').doc(studentId).update({'classId': null});
+      batch.update(_firestore.collection('users').doc(studentId), {'classId': null});
+      await batch.commit();
     } catch (e) {
-      throw Exception('Impossible de retirer l\'étudiant de la classe');
+      debugPrint('removeStudentFromClass: $e');
+      throw Exception('Impossible de retirer l\'élève de la classe.');
     }
   }
 
@@ -84,19 +101,27 @@ class ClassRepository {
       final teacher = UserModel.fromMap(teacherDoc.data()!, teacherDoc.id);
       final classes = await getAllClasses();
       if (!SchoolRules.canAssignTeacher(teacher, classes, classId)) {
-        throw Exception(
-            '${teacher.name} enseigne déjà dans ${SchoolRules.maxClassesPerTeacher} classes (maximum).');
+        throw Exception(tooManyClassesMessage(teacher.name));
       }
     }
     try {
-      await _firestore.collection(_collection).doc(classId).update({
+      final batch = _firestore.batch();
+      batch.update(_firestore.collection(_collection).doc(classId), {
         'teacherIds': FieldValue.arrayUnion([teacherId])
       });
-      await _firestore.collection('users').doc(teacherId).update({
+      batch.update(_firestore.collection('users').doc(teacherId), {
         'classIds': FieldValue.arrayUnion([classId])
       });
+      await batch.commit();
+    } on FirebaseException catch (e) {
+      // Les règles plafonnent users.classIds à 5 (classIdsWithinLimit).
+      if (e.code == 'permission-denied') {
+        throw Exception(tooManyClassesMessage(
+            (teacherDoc.data()?['name'] as String?) ?? 'Ce professeur'));
+      }
+      throw Exception('Impossible d\'assigner le professeur à la classe.');
     } catch (e) {
-      throw Exception('Impossible d\'assigner le professeur à la classe');
+      throw Exception('Impossible d\'assigner le professeur à la classe.');
     }
   }
 
@@ -119,12 +144,14 @@ class ClassRepository {
 
   Future<void> removeTeacherFromClass(String classId, String teacherId) async {
     try {
-      await _firestore.collection(_collection).doc(classId).update({
+      final batch = _firestore.batch();
+      batch.update(_firestore.collection(_collection).doc(classId), {
         'teacherIds': FieldValue.arrayRemove([teacherId])
       });
-      await _firestore.collection('users').doc(teacherId).update({
+      batch.update(_firestore.collection('users').doc(teacherId), {
         'classIds': FieldValue.arrayRemove([classId])
       });
+      await batch.commit();
     } catch (e) {
       throw Exception('Impossible de retirer le professeur de la classe');
     }

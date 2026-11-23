@@ -1,3 +1,4 @@
+import '../../../core/utils/error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
@@ -32,7 +33,7 @@ class _AssignClassesDialogState extends ConsumerState<AssignClassesDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Erreur : ${errorText(e)}'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -54,7 +55,7 @@ class _AssignClassesDialogState extends ConsumerState<AssignClassesDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Erreur : ${errorText(e)}'), backgroundColor: AppColors.error),
         );
       }
     } finally {

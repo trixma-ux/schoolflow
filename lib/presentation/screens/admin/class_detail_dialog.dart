@@ -1,3 +1,4 @@
+import '../../../core/utils/error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/class_model.dart';
@@ -38,7 +39,7 @@ class _ClassDetailDialogState extends ConsumerState<ClassDetailDialog>
       await _repo.removeStudentFromClass(widget.classModel.id, studentId);
       if (mounted) _snack('Élève retiré.', AppColors.success);
     } catch (e) {
-      if (mounted) _snack('Erreur : $e', AppColors.error);
+      if (mounted) _snack('Erreur : ${errorText(e)}', AppColors.error);
     }
   }
 
@@ -49,7 +50,7 @@ class _ClassDetailDialogState extends ConsumerState<ClassDetailDialog>
       await _repo.removeTeacherFromClass(widget.classModel.id, teacherId);
       if (mounted) _snack('Professeur retiré.', AppColors.success);
     } catch (e) {
-      if (mounted) _snack('Erreur : $e', AppColors.error);
+      if (mounted) _snack('Erreur : ${errorText(e)}', AppColors.error);
     }
   }
 
@@ -92,7 +93,7 @@ class _ClassDetailDialogState extends ConsumerState<ClassDetailDialog>
                             widget.classModel.id, picked!);
                         if (mounted) _snack('Professeur assigné !', AppColors.success);
                       } catch (e) {
-                        if (mounted) _snack('Erreur : $e', AppColors.error);
+                        if (mounted) _snack('Erreur : ${errorText(e)}', AppColors.error);
                       }
                     },
               child: const Text('Assigner', style: TextStyle(color: Colors.white)),
@@ -142,7 +143,7 @@ class _ClassDetailDialogState extends ConsumerState<ClassDetailDialog>
                         await _repo.addStudentToClass(widget.classModel.id, picked!);
                         if (mounted) _snack('Élève ajouté !', AppColors.success);
                       } catch (e) {
-                        if (mounted) _snack('Erreur : $e', AppColors.error);
+                        if (mounted) _snack('Erreur : ${errorText(e)}', AppColors.error);
                       }
                     },
               child: const Text('Ajouter', style: TextStyle(color: Colors.white)),
